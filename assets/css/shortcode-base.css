@@ -1,0 +1,197 @@
+.lotzwoo_page {
+    --lotzwoo_color-primary: orangered;
+    --lotzwoo_color-primary-light: #ff9166;
+    --lotzwoo_color-text_dark: black;
+    --lotzwoo_color-text_light: white;
+    --lotzwoo_color-background-light: white;
+    --lotzwoo_color-background-page: navajowhite;
+    --lotzwoo_color-background-page-transparent: #ffdead87;
+    --lotzwoo_color-gray50: #e6e6e6;
+    --lotzwoo_color-gray100: #d0d0d0;
+    --lotzwoo_color-gray300: #a3a3a3;
+    --lotzwoo_font-family: "Open Sans", "Karla", sans-serif;
+
+    font-family: var(--lotzwoo_font-family);
+    color: var(--lotzwoo_color-text_dark);
+    line-height: 1.5;
+    font-size: 16px;
+    padding:20px;
+    background-color: var(--lotzwoo_color-background-page);
+    height: 100vh;
+}
+
+.lotzwoo_page * {
+    box-sizing: border-box;
+}
+
+.lotzwoo_page h1,
+.lotzwoo_page h2,
+.lotzwoo_page h3,
+.lotzwoo_page h4 {
+    font-weight: 600;
+    line-height: 1.2;
+    margin: 0 0 1rem;
+    color: var(--lotzwoo_color-text_dark);
+}
+
+.lotzwoo_page p {
+    margin: 0 0 1rem;
+}
+
+.lotzwoo_page a {
+    color: var(--lotzwoo_color-primary);
+    text-decoration-thickness: 2px;
+}
+
+.lotzwoo_page a:hover,
+.lotzwoo_page a:focus {
+    color: var(--lotzwoo_color-primary-light);
+}
+
+.lotzwoo_page__section {
+    background-color: var(--lotzwoo_color-background-light);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 8px 32px -4px #00000020;
+}
+
+.lotzwoo_page__section:last-child {
+    margin-bottom: 0;
+}
+
+.lotzwoo_page__section--muted {
+    background-color: transparent;
+}
+
+.lotzwoo_page details {
+    padding: 0;
+}
+
+.lotzwoo_page details ul {
+    margin-left: 1rem !important;
+}
+
+.lotzwoo_page summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.lotzwoo_page table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9375rem;
+    display: block;
+    overflow-x: auto;
+}
+
+.lotzwoo_page table tbody {
+    border-right: 2.5px solid var(--lotzwoo_color-gray100);
+    border-left: 2.5px solid var(--lotzwoo_color-gray100);
+}
+
+.lotzwoo_page table th,
+.lotzwoo_page table td {
+    border-bottom: 2.5px solid var(--lotzwoo_color-gray100);
+    padding: 0.75rem;
+    text-align: left;
+    max-width: 400px!important;
+    min-width: 200px!important;
+}
+
+.lotzwoo_page table td {
+    border-right: 1px solid var(--lotzwoo_color-gray100);
+    border-left: 1px solid var(--lotzwoo_color-gray100);
+}
+
+.lotzwoo_page table th {
+    text-transform: uppercase;
+    font-size: 0.8125rem;
+    letter-spacing: 0.05em;
+    color: var(--lotzwoo_color-gray300);
+}
+
+.lotzwoo_page table tbody tr:hover {
+    background-color: var(--lotzwoo_color-background-page-transparent);
+}
+
+.lotzwoo_page table tbody tr:hover,
+.lotzwoo_page table tbody tr:not(:hover) {
+    transition: 0.5s;
+}
+
+.lotzwoo_page button,
+.lotzwoo_page .button,
+.lotzwoo_page button.button {
+    font-family: inherit;
+    border-radius: 999px;
+    padding: 0.5rem 1.5rem;
+    border: none;
+    background: var(--lotzwoo_color-primary);
+    color: var(--lotzwoo_color-text_light);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.lotzwoo_page button:hover,
+.lotzwoo_page .button:hover,
+.lotzwoo_page button.button:hover {
+    background: var(--lotzwoo_color-primary-light);
+    transform: translateY(-1px);
+}
+
+.lotzwoo_page button:disabled,
+.lotzwoo_page .button:disabled,
+.lotzwoo_page button.button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.lotzwoo_page .lotzwoo_page__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--lotzwoo_gray100);
+    color: var(--lotzwoo_color-text_dark);
+}
+
+.lotzwoo_page .lotzwoo_page__badge--primary {
+    background: var(--lotzwoo_color-primary);
+    color: var(--lotzwoo_color-text_light);
+}
+
+.lotzwoo-shortcode-intro,
+.lotzwoo-image-management__intro {
+    padding: 0;
+    border: none;
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+    box-shadow: none;
+}
+
+.lotzwoo-shortcode-intro summary,
+.lotzwoo-image-management__intro summary {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.lotzwoo-shortcode-intro ul,
+.lotzwoo-image-management__intro ul,
+.lotzwoo-shortcode-intro .lotzwoo-menu-planning__intro {
+    margin: 0;
+    padding: 0;
+    border-radius: 12px;
+    background: var(--lotzwoo_background-light);
+    border: 1px solid var(--lotzwoo_gray100);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.lotzwoo-shortcode-intro ul li + li,
+.lotzwoo-image-management__intro ul li + li {
+    margin-top: 0.35rem;
+}

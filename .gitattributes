@@ -1,0 +1,15 @@
+# Ensure text files stay UTF-8 with LF endings.
+* text=auto eol=lf
+
+# Force binary for media/assets
+*.{png,jpg,jpeg,gif,svg,ico,webp} binary
+*.{woff,woff2,ttf,eot} binary
+
+# Preserve CRLF for Windows-specific scripts if needed
+*.bat text eol=crlf
+
+# Keep JSON/JS/PHP consistent
+*.php text
+*.js text
+*.css text
+*.json text
