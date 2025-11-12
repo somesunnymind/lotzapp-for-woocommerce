@@ -27,6 +27,8 @@ class Defaults
             'locked_fields'            => [],
             'meta_key'                 => '_ca_is_estimated',
             'show_range_note'          => 1,
+            'emails_enabled'           => 0,
+            'emails_tracking_template' => '<p><strong>Tracking-Links</strong><br>{{value}}</p>',
         ];
 
         foreach (Field_Registry::option_defaults() as $option_key => $value) {

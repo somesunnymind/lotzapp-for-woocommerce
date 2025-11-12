@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       LotzApp for WooCommerce
  * Description:       Mark products as estimated-price (Ca.-Artikel) and prefix prices across WooCommerce. Adds eine LotzApp-Integration mit Buffer-Produkt-Logik.
- * Version:           0.1.0
+ * Version:           0.1.1
  * Author:            somesunnymind.com
  * Requires at least: 5.8
  * Requires PHP:      7.4
@@ -31,6 +31,15 @@ if (!defined('LOTZWOO_PLUGIN_DIR')) {
 }
 if (!defined('LOTZWOO_PLUGIN_URL')) {
     define('LOTZWOO_PLUGIN_URL', plugin_dir_url(__FILE__));
+}
+if (!defined('LOTZWOO_GITHUB_OWNER')) {
+    define('LOTZWOO_GITHUB_OWNER', 'somesunnymind');
+}
+if (!defined('LOTZWOO_GITHUB_REPOSITORY')) {
+    define('LOTZWOO_GITHUB_REPOSITORY', 'lotzapp-for-woocommerce');
+}
+if (!defined('LOTZWOO_GITHUB_BRANCH')) {
+    define('LOTZWOO_GITHUB_BRANCH', 'main');
 }
 
 // Declare HPOS (Custom Order Tables) compatibility.
@@ -70,6 +79,19 @@ spl_autoload_register(static function ($class) {
         }
     }
 });
+
+$lotzwoo_updater_config = [
+    'owner'       => LOTZWOO_GITHUB_OWNER,
+    'repository'  => LOTZWOO_GITHUB_REPOSITORY,
+    'branch'      => LOTZWOO_GITHUB_BRANCH,
+    'plugin_file' => LOTZWOO_PLUGIN_FILE,
+    'slug'        => 'lotzapp-for-woocommerce',
+    'token'       => defined('LOTZWOO_GITHUB_TOKEN') ? LOTZWOO_GITHUB_TOKEN : null,
+];
+
+$lotzwoo_updater_config = apply_filters('lotzwoo/github_updater_config', $lotzwoo_updater_config);
+
+Lotzwoo\Updates\GitHub_Updater::boot($lotzwoo_updater_config);
 
 register_activation_hook(__FILE__, static function () {
     Lotzwoo\Plugin::activate();

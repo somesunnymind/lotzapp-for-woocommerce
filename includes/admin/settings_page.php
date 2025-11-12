@@ -50,6 +50,7 @@ class Settings_Page
         $prices_page         = 'lotzwoo-settings-ca-prices';
         $images_page         = 'lotzwoo-settings-product-images';
         $menu_planning_page  = 'lotzwoo-settings-menu-planning';
+        $emails_page         = 'lotzwoo-settings-emails';
 
         add_settings_section(
             'lotzwoo_general',
@@ -309,6 +310,52 @@ class Settings_Page
             $prices_page,
             'lotzwoo_prices'
         );
+
+        add_settings_section(
+            'lotzwoo_emails',
+            __('WooCommerce Emails', 'lotzapp-for-woocommerce'),
+            function () {
+                echo '<p>' . esc_html__('Konfiguration fuer Tracking-Links und Rechnungsanhaenge.', 'lotzapp-for-woocommerce') . '</p>';
+            },
+            $emails_page
+        );
+
+        add_settings_field(
+            'emails_tracking_template',
+            __('Tracking-Link Ausgabe', 'lotzapp-for-woocommerce'),
+            function () {
+                $value       = (string) Plugin::opt('emails_tracking_template', $this->default_email_tracking_template());
+                $placeholder = Field_Registry::TEMPLATE_PLACEHOLDER;
+                echo '<textarea name="lotzwoo_options[emails_tracking_template]" rows="4" class="large-text code">' . esc_textarea($value) . '</textarea>';
+                $description = sprintf(
+                    __('%s wird durch eine Liste klickbarer Tracking-Links ersetzt.', 'lotzapp-for-woocommerce'),
+                    '<code>' . esc_html($placeholder) . '</code>'
+                );
+                echo '<p class="description">' . wp_kses_post($description) . '</p>';
+            },
+            $emails_page,
+            'lotzwoo_emails'
+        );
+
+        add_settings_field(
+            'emails_meta_keys',
+            __('ERP-Integration', 'lotzapp-for-woocommerce'),
+            function () {
+                $shortcode_example = '<code>[lotzwoo_tracking_links order_id="123"]</code>';
+                echo '<p class="description">' . esc_html__('ERP-Systeme schreiben vor Versand Tracking- und Rechnungslinks in diese Metafelder der Bestellung:', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<ul>';
+                echo '<li><code>lotzwoo_tracking_url</code> &ndash; ' . esc_html__('eine oder mehrere URLs (jeweils neue Zeile).', 'lotzapp-for-woocommerce') . '</li>';
+                echo '<li><code>lotzwoo_invoice_url</code> &ndash; ' . esc_html__('ein PDF-Link, der als Anhang geladen wird.', 'lotzapp-for-woocommerce') . '</li>';
+                echo '</ul>';
+                $shortcode_text = sprintf(
+                    __('Shortcode fuer Emails oder Seiten: %s (order_id optional, in WooCommerce-Emails wird automatisch die aktuelle Bestellung verwendet).', 'lotzapp-for-woocommerce'),
+                    $shortcode_example
+                );
+                echo '<p class="description">' . wp_kses_post($shortcode_text) . '</p>';
+            },
+            $emails_page,
+            'lotzwoo_emails'
+        );
     }
 
     /**
@@ -519,6 +566,21 @@ class Settings_Page
         $options['menu_planning_time']       = isset($input['menu_planning_time']) ? $this->sanitize_menu_planning_time((string) $input['menu_planning_time']) : $this->sanitize_menu_planning_time((string) $options['menu_planning_time']);
         $options['menu_planning_show_backend_links'] = !empty($input['menu_planning_show_backend_links']) ? 1 : 0;
         $options['show_range_note']      = !empty($input['show_range_note']) ? 1 : 0;
+        $options['emails_enabled']       = !empty($input['emails_enabled']) ? 1 : 0;
+        $default_email_template          = $this->default_email_tracking_template();
+        $current_email_template          = Plugin::opt('emails_tracking_template', $default_email_template);
+        $raw_email_template              = isset($input['emails_tracking_template']) ? (string) $input['emails_tracking_template'] : (string) $current_email_template;
+        if (trim($raw_email_template) === '') {
+            $raw_email_template = $default_email_template;
+        }
+        $options['emails_tracking_template'] = $this->sanitize_field_template(
+            $raw_email_template,
+            (string) $current_email_template,
+            [
+                'slug'           => 'emails_tracking_template',
+                'settings_label' => __('Tracking-Link Ausgabe', 'lotzapp-for-woocommerce'),
+            ]
+        );
 
         foreach (Field_Registry::all() as $field) {
             $options[$field['option_key']] = !empty($input[$field['option_key']]) ? 1 : 0;
@@ -639,12 +701,13 @@ class Settings_Page
     public function render(): void
     {
         $tab  = isset($_GET['tab']) ? sanitize_key((string) $_GET['tab']) : 'general';
-        $tab  = in_array($tab, ['general', 'ca-prices', 'product-images', 'menu-planning'], true) ? $tab : 'general';
+        $tab  = in_array($tab, ['general', 'ca-prices', 'product-images', 'menu-planning', 'emails'], true) ? $tab : 'general';
         $tabs = [
             'general'   => __('Allgemein', 'lotzapp-for-woocommerce'),
             'ca-prices' => __('Ca-Preise', 'lotzapp-for-woocommerce'),
             'product-images' => __('Produktbilder', 'lotzapp-for-woocommerce'),
             'menu-planning'  => __('Menüplanung', 'lotzapp-for-woocommerce'),
+            'emails'    => __('Emails', 'lotzapp-for-woocommerce'),
         ];
         $base_url = menu_page_url('lotzwoo-settings', false);
         ?>
@@ -767,6 +830,68 @@ class Settings_Page
                     do_settings_sections('lotzwoo-settings-product-images');
                 } elseif ($tab === 'menu-planning') {
                     do_settings_sections('lotzwoo-settings-menu-planning');
+                } elseif ($tab === 'emails') {
+                    $emails_enabled = (bool) Plugin::opt('emails_enabled', 0);
+                    ob_start();
+                    do_settings_sections('lotzwoo-settings-emails');
+                    $email_sections_html = (string) ob_get_clean();
+
+                    $email_heading_html = '';
+                    $email_intro_html   = '';
+
+                    if (preg_match('/^\s*<h2[^>]*>.*?<\/h2>/is', $email_sections_html, $matches)) {
+                        $email_heading_html  = $matches[0];
+                        $email_sections_html = (string) substr($email_sections_html, strlen($matches[0]));
+                    }
+
+                    $email_sections_html = ltrim($email_sections_html);
+
+                    if (preg_match('/^\s*<p[^>]*>.*?<\/p>/is', $email_sections_html, $matches)) {
+                        $email_intro_html    = $matches[0];
+                        $email_sections_html = (string) substr($email_sections_html, strlen($matches[0]));
+                    }
+
+                    $email_sections_html = ltrim($email_sections_html);
+
+                    if ($email_heading_html === '') {
+                        $email_heading_html = '<h2>' . esc_html__('WooCommerce Emails', 'lotzapp-for-woocommerce') . '</h2>';
+                    }
+                    if ($email_intro_html === '') {
+                        $email_intro_html = '<p>' . esc_html__('Konfiguration fuer Tracking-Links und Rechnungsanhaenge.', 'lotzapp-for-woocommerce') . '</p>';
+                    }
+                    ?>
+                    <?php echo $email_heading_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                    <?php echo $email_intro_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                    <fieldset class="lotzwoo-setting-toggle">
+                        <legend class="screen-reader-text"><?php esc_html_e('LotzApp Emails', 'lotzapp-for-woocommerce'); ?></legend>
+                        <label for="lotzwoo_emails_enabled">
+                            <input type="checkbox" id="lotzwoo_emails_enabled" name="lotzwoo_options[emails_enabled]" value="1" <?php checked($emails_enabled); ?> />
+                            <?php esc_html_e('LotzApp Tracking und Rechnung in WooCommerce-Email einfuegen', 'lotzapp-for-woocommerce'); ?>
+                        </label>
+                        <p class="description"><?php esc_html_e('Aktiviert Tracking-Shortcode sowie Rechnungsanhaenge fuer die E-Mail customer_completed_order.', 'lotzapp-for-woocommerce'); ?></p>
+                    </fieldset>
+                    <div id="lotzwoo-email-settings" <?php echo $emails_enabled ? '' : 'style="display:none;"'; ?>>
+                        <?php echo $email_sections_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                    </div>
+                    <script>
+                    (function() {
+                        var checkbox = document.getElementById('lotzwoo_emails_enabled');
+                        var settingsContainer = document.getElementById('lotzwoo-email-settings');
+                        if (!checkbox || !settingsContainer) {
+                            return;
+                        }
+                        var toggle = function () {
+                            settingsContainer.style.display = checkbox.checked ? '' : 'none';
+                        };
+                        checkbox.addEventListener('change', toggle);
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', toggle);
+                        } else {
+                            toggle();
+                        }
+                    })();
+                    </script>
+                    <?php
                 }
                 submit_button();
                 ?>
@@ -795,9 +920,21 @@ class Settings_Page
                     <p><?php esc_html_e('Legt eine neue, private WordPress-Seite fuer die Menüplanung an und hinterlegt die ID automatisch. Als Seitentemplate "blank" verwenden (Inhaltsblock auf volle Breite einstellen).', 'lotzapp-for-woocommerce'); ?></p>
                     <?php submit_button(__('Menüplanung-Seite anlegen', 'lotzapp-for-woocommerce'), 'secondary'); ?>
                 </form>
+            <?php elseif ($tab === 'emails') : ?>
+                <p><?php esc_html_e('Hinweis: Die ERP-Schnittstelle muss die genannten Metafelder fuellen, bevor das Versandabschluss-Email verschickt wird.', 'lotzapp-for-woocommerce'); ?></p>
             <?php endif; ?>
         </div>
         <?php
+    }
+
+    private function default_email_tracking_template(): string
+    {
+        $defaults = Plugin::defaults();
+        if (isset($defaults['emails_tracking_template'])) {
+            return (string) $defaults['emails_tracking_template'];
+        }
+
+        return '<p><strong>Tracking-Links</strong><br>{{value}}</p>';
     }
 
     public function handle_create_buffer(): void

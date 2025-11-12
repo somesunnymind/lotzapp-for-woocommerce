@@ -9,6 +9,7 @@ use Lotzwoo\Migrations\Menu_Planning_Migrator;
 use Lotzwoo\Providers\Admin_Service_Provider;
 use Lotzwoo\Providers\Ajax_Service_Provider;
 use Lotzwoo\Providers\Assets_Service_Provider;
+use Lotzwoo\Providers\Emails_Service_Provider;
 use Lotzwoo\Providers\Cron_Service_Provider;
 use Lotzwoo\Providers\Frontend_Service_Provider;
 use Lotzwoo\Providers\Service_Provider_Interface;
@@ -254,6 +255,7 @@ class Plugin
         $this->providers = [
             new Assets_Service_Provider(),
             new Shortcode_Service_Provider(),
+            new Emails_Service_Provider(),
             new Ajax_Service_Provider(),
             new Admin_Service_Provider(),
             new Frontend_Service_Provider(),
