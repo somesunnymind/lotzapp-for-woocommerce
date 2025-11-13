@@ -109,7 +109,7 @@ class GitHub_Updater
             return $transient;
         }
 
-        if (!is_object($transient) || empty($transient->checked[$this->plugin_basename])) {
+        if (!is_object($transient)) {
             return $transient;
         }
 
@@ -118,7 +118,11 @@ class GitHub_Updater
             return $transient;
         }
 
-        $current_version = (string) $transient->checked[$this->plugin_basename];
+        $current_version = $transient->checked[$this->plugin_basename] ?? $this->get_local_version();
+        if ($current_version === '') {
+            $current_version = '0.0.0';
+        }
+
         if (version_compare($release['version'], $current_version, '<=')) {
             unset($transient->response[$this->plugin_basename]);
             return $transient;
@@ -397,6 +401,12 @@ class GitHub_Updater
         return $this->readme_header;
     }
 
+    private function get_local_version(): string
+    {
+        $data = $this->get_plugin_data();
+        return isset($data['Version']) ? (string) $data['Version'] : '';
+    }
+
     private function normalize_version(string $tag): string
     {
         $tag = trim($tag);
@@ -417,4 +427,3 @@ class GitHub_Updater
         return sprintf('LotzWoo Update Checker (%s)', untrailingslashit($site));
     }
 }
-

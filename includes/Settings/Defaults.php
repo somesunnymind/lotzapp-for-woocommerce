@@ -14,8 +14,8 @@ class Defaults
     {
         $defaults = [
             'ca_prices_enabled'        => 1,
-            'price_prefix'             => 'Ca. ',
-            'total_prefix'             => 'Ca. ',
+            'price_prefix'             => 'ca. ',
+            'total_prefix'             => 'max. ',
             'buffer_product_id'        => 0,
             'image_management_page_id' => 0,
             'menu_planning_page_id'    => 0,
@@ -27,8 +27,9 @@ class Defaults
             'locked_fields'            => [],
             'meta_key'                 => '_ca_is_estimated',
             'show_range_note'          => 1,
-            'emails_enabled'           => 0,
-            'emails_tracking_template' => '<p><strong>Tracking-Links</strong><br>{{value}}</p>',
+            'emails_tracking_enabled'  => 1,
+            'emails_invoice_enabled'   => 1,
+            'emails_tracking_template' => '<p>Hier geht\'s zur <strong>Sendungsverfolgung:</strong><br>{{value}}</p>',
         ];
 
         foreach (Field_Registry::option_defaults() as $option_key => $value) {

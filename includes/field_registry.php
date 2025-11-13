@@ -416,10 +416,18 @@ class Field_Registry
     public static function option_defaults(): array
     {
         $defaults = [];
+        $template_defaults = [
+            'heading_base_price_field'         => '€ {{value}}',
+            'heading_storage_temperature_field'=> '{{value}} °C',
+            'heading_alcohol_by_volume_field'  => 'vol. {{value}} %',
+            'heading_deposit_field'            => '€ {{value}}',
+            'heading_age_restriction_field'    => 'Ab {{value}} Jahren',
+        ];
         foreach (self::all() as $field) {
             $defaults[$field['option_key']] = 0;
             if (!empty($field['heading_option_key'])) {
-                $defaults[$field['heading_option_key']] = '';
+                $key = $field['heading_option_key'];
+                $defaults[$key] = $template_defaults[$key] ?? self::TEMPLATE_PLACEHOLDER;
             }
         }
         return $defaults;

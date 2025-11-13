@@ -27,11 +27,17 @@ class Email_Features
      */
     private array $temporary_files = [];
 
+    /**
+     * @var array<string, bool>
+     */
+    private array $rendered_tracking_blocks = [];
+
     public function register(): void
     {
         add_action('init', [$this, 'maybe_register_order_meta']);
         add_shortcode('lotzwoo_tracking_links', [$this, 'render_tracking_shortcode']);
-        add_action('woocommerce_email_after_order_table', [$this, 'maybe_render_tracking_block'], 25, 4);
+        add_action('woocommerce_email_order_details', [$this, 'maybe_render_tracking_block'], 5, 4);
+        add_action('woocommerce_email_before_order_table', [$this, 'maybe_render_tracking_block'], 5, 4);
         add_filter('woocommerce_email_attachments', [$this, 'maybe_attach_invoice'], 10, 4);
         add_action('woocommerce_email_after_send', [$this, 'cleanup_temp_files'], 10, 0);
         add_action('shutdown', [$this, 'cleanup_temp_files']);
@@ -93,7 +99,7 @@ class Email_Features
 
     public function render_tracking_shortcode($atts = []): string
     {
-        if (!$this->is_enabled()) {
+        if (!$this->tracking_feature_enabled()) {
             return '';
         }
 
@@ -123,7 +129,7 @@ class Email_Features
      */
     public function maybe_render_tracking_block($order, bool $sent_to_admin, bool $plain_text, $email): void
     {
-        if (!$this->is_enabled() || $sent_to_admin) {
+        if (!$this->tracking_feature_enabled() || $sent_to_admin) {
             return;
         }
 
@@ -131,13 +137,19 @@ class Email_Features
             return;
         }
 
-        if (!$email instanceof WC_Email || $email->id !== 'customer_completed_order') {
+        $email_id = $email instanceof WC_Email ? $email->id : '';
+        if ($email_id !== 'customer_completed_order') {
+            return;
+        }
+
+        if ($this->has_rendered_tracking_block($order, $email_id)) {
             return;
         }
 
         if ($plain_text) {
             $content = $this->build_plain_text_tracking($order);
             if ($content !== '') {
+                $this->mark_tracking_block_rendered($order, $email_id);
                 echo "\n" . $content . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
             }
             return;
@@ -145,6 +157,7 @@ class Email_Features
 
         $content = $this->build_html_tracking($order);
         if ($content !== '') {
+            $this->mark_tracking_block_rendered($order, $email_id);
             echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         }
     }
@@ -163,12 +176,16 @@ class Email_Features
             return $attachments;
         }
 
+        if (!$this->invoice_feature_enabled()) {
+            return $attachments;
+        }
+
         $invoice_url = $this->get_invoice_url($order);
         if ($invoice_url === '') {
             return $attachments;
         }
 
-        $file = $this->download_invoice_file($invoice_url);
+        $file = $this->resolve_invoice_file($invoice_url);
         if (!$file) {
             return $attachments;
         }
@@ -271,6 +288,13 @@ class Email_Features
             }
         }
 
+        if (empty($links)) {
+            $raw_single = $order->get_meta(self::TRACKING_META_KEY, true);
+            if (is_string($raw_single) && trim($raw_single) !== '') {
+                $this->log_debug(sprintf('Tracking meta present but no valid URLs for order %d: %s', $order->get_id(), $raw_single));
+            }
+        }
+
         return array_values($links);
     }
 
@@ -347,6 +371,39 @@ class Email_Features
         return $url && wp_http_validate_url($url) ? $url : '';
     }
 
+    private function resolve_invoice_file(string $url): ?string
+    {
+        $local = $this->map_local_invoice_path($url);
+        if ($local && file_exists($local)) {
+            return $local;
+        }
+
+        return $this->download_invoice_file($url);
+    }
+
+    private function map_local_invoice_path(string $url): ?string
+    {
+        $uploads = wp_get_upload_dir();
+        if (!empty($uploads['baseurl']) && strpos($url, $uploads['baseurl']) === 0) {
+            $relative = substr($url, strlen($uploads['baseurl']));
+            $path     = wp_normalize_path($uploads['basedir'] . $relative);
+            if (file_exists($path)) {
+                return $path;
+            }
+        }
+
+        $site_url = trailingslashit(home_url());
+        if (strpos($url, $site_url) === 0) {
+            $relative = ltrim(substr($url, strlen($site_url)), '/');
+            $path     = wp_normalize_path(trailingslashit(ABSPATH) . $relative);
+            if (file_exists($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
     private function download_invoice_file(string $url): ?string
     {
         if (isset($this->downloaded_invoices[$url]) && is_string($this->downloaded_invoices[$url]) && file_exists($this->downloaded_invoices[$url])) {
@@ -389,7 +446,17 @@ class Email_Features
 
     private function is_enabled(): bool
     {
-        return (bool) Plugin::opt('emails_enabled', 0);
+        return $this->tracking_feature_enabled() || $this->invoice_feature_enabled();
+    }
+
+    private function tracking_feature_enabled(): bool
+    {
+        return (bool) Plugin::opt('emails_tracking_enabled', 1);
+    }
+
+    private function invoice_feature_enabled(): bool
+    {
+        return (bool) Plugin::opt('emails_invoice_enabled', 1);
     }
 
     private function log_error(string $message): void
@@ -400,6 +467,28 @@ class Email_Features
 
         $logger = wc_get_logger();
         $logger->error($message, ['source' => 'lotzwoo-emails']);
+    }
+
+    private function log_debug(string $message): void
+    {
+        if (!function_exists('wc_get_logger') || !defined('WP_DEBUG') || !WP_DEBUG) {
+            return;
+        }
+
+        $logger = wc_get_logger();
+        $logger->debug($message, ['source' => 'lotzwoo-emails']);
+    }
+
+    private function has_rendered_tracking_block(WC_Order $order, string $email_id): bool
+    {
+        $key = $order->get_id() . ':' . $email_id;
+        return isset($this->rendered_tracking_blocks[$key]);
+    }
+
+    private function mark_tracking_block_rendered(WC_Order $order, string $email_id): void
+    {
+        $key = $order->get_id() . ':' . $email_id;
+        $this->rendered_tracking_blocks[$key] = true;
     }
 
     /**
