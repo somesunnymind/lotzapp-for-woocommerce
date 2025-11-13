@@ -35,6 +35,11 @@ class Email_Features
         add_filter('woocommerce_email_attachments', [$this, 'maybe_attach_invoice'], 10, 4);
         add_action('woocommerce_email_after_send', [$this, 'cleanup_temp_files'], 10, 0);
         add_action('shutdown', [$this, 'cleanup_temp_files']);
+
+        if (is_admin()) {
+            add_action('add_meta_boxes', [$this, 'register_order_meta_box'], 20, 2);
+            add_action('woocommerce_process_shop_order_meta', [$this, 'save_admin_order_fields'], 20, 2);
+        }
     }
 
     public function maybe_register_order_meta(): void
@@ -248,6 +253,14 @@ class Email_Features
             $raw_values = $single ? [$single] : [];
         }
 
+        foreach ($raw_values as &$raw_value) {
+            if ($raw_value instanceof \WC_Meta_Data) {
+                $data      = $raw_value->get_data();
+                $raw_value = isset($data['value']) ? $data['value'] : '';
+            }
+        }
+        unset($raw_value);
+
         $links = [];
         foreach ($raw_values as $value) {
             foreach ($this->extract_tracking_candidates($value) as $candidate) {
@@ -263,6 +276,11 @@ class Email_Features
 
     private function extract_tracking_candidates($value): array
     {
+        if ($value instanceof \WC_Meta_Data) {
+            $data  = $value->get_data();
+            $value = isset($data['value']) ? $data['value'] : '';
+        }
+
         if (is_array($value)) {
             $collected = [];
             foreach ($value as $sub_value) {
@@ -382,5 +400,154 @@ class Email_Features
 
         $logger = wc_get_logger();
         $logger->error($message, ['source' => 'lotzwoo-emails']);
+    }
+
+    /**
+     * Registers a dedicated meta box for order screens (classic + HPOS).
+     *
+     * @param string|\WP_Screen $screen_id
+     * @param mixed             $order_or_post
+     */
+    public function register_order_meta_box($screen_id, $order_or_post = null): void
+    {
+        if (!$this->is_order_screen($screen_id)) {
+            return;
+        }
+
+        $target = is_object($screen_id) && property_exists($screen_id, 'id') ? $screen_id->id : $screen_id;
+
+        add_meta_box(
+            'lotzwoo-order-emails',
+            __('LotzApp Emails', 'lotzapp-for-woocommerce'),
+            [$this, 'render_order_meta_box'],
+            $target,
+            'normal',
+            'default'
+        );
+    }
+
+    /**
+     * Meta box callback that normalizes the passed object to a WC_Order.
+     *
+     * @param \WP_Post|WC_Order|null $post_or_order
+     */
+    public function render_order_meta_box($post_or_order): void
+    {
+        if ($post_or_order instanceof WC_Order) {
+            $order = $post_or_order;
+        } elseif ($post_or_order instanceof \WP_Post || is_numeric($post_or_order)) {
+            $order = wc_get_order($post_or_order);
+        } else {
+            $order = null;
+        }
+
+        if (!$order instanceof WC_Order) {
+            echo '<p>' . esc_html__('Order context not available.', 'lotzapp-for-woocommerce') . '</p>';
+            return;
+        }
+
+        $this->render_admin_order_fields($order);
+    }
+
+    /**
+     * Checks whether the current screen belongs to an order editor (classic or HPOS).
+     *
+     * @param mixed $screen_id
+     */
+    private function is_order_screen($screen_id): bool
+    {
+        if ($screen_id instanceof \WP_Screen) {
+            $screen_id = $screen_id->id;
+        }
+
+        if (!is_string($screen_id) || $screen_id === '') {
+            return false;
+        }
+
+        if ($screen_id === 'shop_order' || strpos($screen_id, 'shop_order') === 0) {
+            return true;
+        }
+
+        if (strpos($screen_id, 'woocommerce_page_wc-orders') === 0) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function render_admin_order_fields(WC_Order $order): void
+    {
+        wp_nonce_field('lotzwoo_save_order_meta', 'lotzwoo_order_meta_nonce');
+
+        $tracking_value = $this->get_raw_tracking_value($order);
+        $invoice_value  = (string) $order->get_meta(self::INVOICE_META_KEY, true);
+        ?>
+        <div class="lotzwoo-email-meta-fields">
+            <p class="form-field lotzwoo_tracking_url_field">
+                <label for="lotzwoo_tracking_url"><?php esc_html_e('Tracking-Links', 'lotzapp-for-woocommerce'); ?></label>
+                <textarea style="min-height:90px;" id="lotzwoo_tracking_url" name="lotzwoo_tracking_url" class="large-text"><?php echo esc_textarea($tracking_value); ?></textarea>
+                <span class="description"><?php esc_html_e('Ein Link pro Zeile. Wird im Kundenabschluss-Mail mit dem LotzApp-Template dargestellt.', 'lotzapp-for-woocommerce'); ?></span>
+            </p>
+            <p class="form-field lotzwoo_invoice_url_field">
+                <label for="lotzwoo_invoice_url"><?php esc_html_e('Rechnungs-PDF URL', 'lotzapp-for-woocommerce'); ?></label>
+                <input type="url" class="widefat" id="lotzwoo_invoice_url" name="lotzwoo_invoice_url" value="<?php echo esc_attr($invoice_value); ?>" />
+                <span class="description"><?php esc_html_e('Wird heruntergeladen und als Anhang an customer_completed_order angefuegt.', 'lotzapp-for-woocommerce'); ?></span>
+            </p>
+        </div>
+        <?php
+    }
+
+    public function save_admin_order_fields(int $order_id, $post): void
+    {
+        if (!isset($_POST['lotzwoo_order_meta_nonce']) || !wp_verify_nonce((string) wp_unslash($_POST['lotzwoo_order_meta_nonce']), 'lotzwoo_save_order_meta')) {
+            return;
+        }
+
+        if (!current_user_can('manage_woocommerce')) {
+            return;
+        }
+
+        $order = wc_get_order($order_id);
+        if (!$order instanceof WC_Order) {
+            return;
+        }
+
+        if (isset($_POST['lotzwoo_tracking_url'])) {
+            $raw_tracking = (string) wp_unslash($_POST['lotzwoo_tracking_url']);
+            $sanitized    = $this->sanitize_tracking_meta_value($raw_tracking);
+            if ($sanitized === '') {
+                $order->delete_meta_data(self::TRACKING_META_KEY);
+            } else {
+                $order->update_meta_data(self::TRACKING_META_KEY, $sanitized);
+            }
+        }
+
+        if (isset($_POST['lotzwoo_invoice_url'])) {
+            $raw_invoice = (string) wp_unslash($_POST['lotzwoo_invoice_url']);
+            $sanitized   = $this->sanitize_invoice_meta_value($raw_invoice);
+            if ($sanitized === '') {
+                $order->delete_meta_data(self::INVOICE_META_KEY);
+            } else {
+                $order->update_meta_data(self::INVOICE_META_KEY, $sanitized);
+            }
+        }
+
+        $order->save();
+    }
+
+    private function get_raw_tracking_value(WC_Order $order): string
+    {
+        $value = $order->get_meta(self::TRACKING_META_KEY, true);
+        if (is_array($value)) {
+            $flattened = [];
+            array_walk_recursive($value, static function ($item) use (&$flattened) {
+                if (is_scalar($item)) {
+                    $flattened[] = (string) $item;
+                }
+            });
+            $value = implode("\n", $flattened);
+        }
+
+        return (string) $value;
     }
 }

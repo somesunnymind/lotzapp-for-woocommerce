@@ -24,6 +24,7 @@ class Settings_Page
         add_action('admin_post_lotzwoo_create_buffer', [$this, 'handle_create_buffer']);
         add_action('admin_post_lotzwoo_create_image_management_page', [$this, 'handle_create_image_management_page']);
         add_action('admin_post_lotzwoo_create_menu_planning_page', [$this, 'handle_create_menu_planning_page']);
+        add_action('admin_post_lotzwoo_send_test_email', [$this, 'handle_send_test_email']);
     }
 
     public function add_menu(): void
@@ -922,6 +923,24 @@ class Settings_Page
                 </form>
             <?php elseif ($tab === 'emails') : ?>
                 <p><?php esc_html_e('Hinweis: Die ERP-Schnittstelle muss die genannten Metafelder fuellen, bevor das Versandabschluss-Email verschickt wird.', 'lotzapp-for-woocommerce'); ?></p>
+                <hr />
+                <h2><?php esc_html_e('Email testen', 'lotzapp-for-woocommerce'); ?></h2>
+                <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post">
+                    <input type="hidden" name="action" value="lotzwoo_send_test_email" />
+                    <?php wp_nonce_field('lotzwoo_send_test_email'); ?>
+                    <table class="form-table" role="presentation">
+                        <tr>
+                            <th scope="row">
+                                <label for="lotzwoo_email_test_order_id"><?php esc_html_e('Bestell-ID', 'lotzapp-for-woocommerce'); ?></label>
+                            </th>
+                            <td>
+                                <input type="number" min="1" class="small-text" id="lotzwoo_email_test_order_id" name="lotzwoo_email_test_order_id" required />
+                                <p class="description"><?php esc_html_e('Loest das Kunden-E-Mail customer_completed_order fuer die angegebene Bestellung erneut aus, unabhaengig vom aktuellen Status.', 'lotzapp-for-woocommerce'); ?></p>
+                            </td>
+                        </tr>
+                    </table>
+                    <?php submit_button(__('customer_completed_order E-Mail senden', 'lotzapp-for-woocommerce'), 'secondary'); ?>
+                </form>
             <?php endif; ?>
         </div>
         <?php
@@ -1006,6 +1025,71 @@ class Settings_Page
         );
         wp_safe_redirect($redirect);
         exit;
+    }
+
+    public function handle_send_test_email(): void
+    {
+        if (!current_user_can('manage_woocommerce')) {
+            wp_die(__('Nicht erlaubt.', 'lotzapp-for-woocommerce'));
+        }
+        check_admin_referer('lotzwoo_send_test_email');
+
+        $redirect = $this->get_emails_tab_url();
+
+        $order_id = isset($_POST['lotzwoo_email_test_order_id']) ? absint($_POST['lotzwoo_email_test_order_id']) : 0;
+        if ($order_id < 1) {
+            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-invalid', __('Bitte eine gueltige Bestell-ID eingeben.', 'lotzapp-for-woocommerce'), 'error');
+            wp_safe_redirect($redirect);
+            exit;
+        }
+
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-missing-order', sprintf(__('Die Bestellung mit der ID %d wurde nicht gefunden.', 'lotzapp-for-woocommerce'), $order_id), 'error');
+            wp_safe_redirect($redirect);
+            exit;
+        }
+
+        $mailer = function_exists('WC') ? WC()->mailer() : null;
+        if (!$mailer || !method_exists($mailer, 'get_emails')) {
+            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-mailer-missing', __('WooCommerce Mailer konnte nicht initialisiert werden.', 'lotzapp-for-woocommerce'), 'error');
+            wp_safe_redirect($redirect);
+            exit;
+        }
+
+        $emails = $mailer->get_emails();
+        $email_instance = null;
+
+        if (isset($emails['WC_Email_Customer_Completed_Order'])) {
+            $email_instance = $emails['WC_Email_Customer_Completed_Order'];
+        } else {
+            foreach ((array) $emails as $email) {
+                if ($email instanceof \WC_Email && $email->id === 'customer_completed_order') {
+                    $email_instance = $email;
+                    break;
+                }
+            }
+        }
+
+        if (!$email_instance) {
+            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-handler-missing', __('customer_completed_order E-Mail konnte nicht gefunden werden.', 'lotzapp-for-woocommerce'), 'error');
+        } else {
+            $email_instance->trigger($order_id, $order);
+            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-success', sprintf(__('Test-E-Mail fuer Bestellung %s wurde versendet.', 'lotzapp-for-woocommerce'), $order->get_order_number()), 'updated');
+        }
+
+        wp_safe_redirect($redirect);
+        exit;
+    }
+
+    private function get_emails_tab_url(): string
+    {
+        $url = menu_page_url('lotzwoo-settings', false);
+        if (!$url) {
+            $url = add_query_arg('page', 'lotzwoo-settings', admin_url('admin.php'));
+        }
+
+        return add_query_arg('tab', 'emails', $url);
     }
 
     private function ensure_buffer_product(): int

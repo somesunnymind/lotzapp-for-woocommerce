@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name:       LotzApp for WooCommerce
- * Description:       Mark products as estimated-price (Ca.-Artikel) and prefix prices across WooCommerce. Adds eine LotzApp-Integration mit Buffer-Produkt-Logik.
- * Version:           0.1.1
+ * Description:       Erweitert WooCommerce-Shops um Ca.-Preislogik, Admin-Tools zur Datenpflege, automatisierte Menüaktualisierung und mehr.
+ * Version:           0.1.2
  * Author:            somesunnymind.com
  * Requires at least: 5.8
  * Requires PHP:      7.4
