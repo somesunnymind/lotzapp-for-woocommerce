@@ -10,6 +10,13 @@ class Field_Registry
 {
     public const TEMPLATE_PLACEHOLDER = '{{value}}';
 
+    public const GROUP_BASICS      = 'basics';
+    public const GROUP_INGREDIENTS = 'ingredients';
+    public const GROUP_MEAT        = 'meat';
+    public const GROUP_CLAIMS      = 'claims';
+    public const GROUP_STORAGE     = 'storage';
+    public const GROUP_MISC        = 'misc';
+
     /**
      * @return array<string, array<string, mixed>>
      */
@@ -18,6 +25,7 @@ class Field_Registry
         return [
             'unit' => [
                 'slug'                       => 'unit',
+                'group'                      => self::GROUP_BASICS,
                 'option_key'                 => 'enable_unit_field',
                 'meta_key'                   => '_lotzwoo_unit',
                 'shortcode'                  => 'lotzwoo_unit',
@@ -31,8 +39,41 @@ class Field_Registry
                 'variation_field_description'=> __('Mengeneinheit fuer diese Variante.', 'lotzapp-for-woocommerce'),
                 'sanitize_callback'          => 'sanitize_text_field',
             ],
+            'contents' => [
+                'slug'                       => 'contents',
+                'group'                      => self::GROUP_BASICS,
+                'option_key'                 => 'enable_contents_field',
+                'meta_key'                   => '_lotzwoo_contents',
+                'shortcode'                  => 'lotzwoo_contents',
+                'heading_option_key'         => 'heading_contents_field',
+                'field_type'                 => 'text',
+                'settings_label'             => __('Inhalt', 'lotzapp-for-woocommerce'),
+                'settings_description'       => __('Aktiviert ein Textfeld fuer Angaben zum Packungsinhalt.', 'lotzapp-for-woocommerce'),
+                'product_field_label'        => __('Inhalt', 'lotzapp-for-woocommerce'),
+                'product_field_description'  => __('Beschreibe den Gesamtinhalt (z. B. 500 ml, 6 St.).', 'lotzapp-for-woocommerce'),
+                'variation_field_label'      => __('Inhalt', 'lotzapp-for-woocommerce'),
+                'variation_field_description'=> __('Packungsinhalt fuer diese Variante.', 'lotzapp-for-woocommerce'),
+                'sanitize_callback'          => 'sanitize_text_field',
+            ],
+            'drained_net_weight' => [
+                'slug'                       => 'drained_net_weight',
+                'group'                      => self::GROUP_BASICS,
+                'option_key'                 => 'enable_drained_net_weight_field',
+                'meta_key'                   => '_lotzwoo_drained_net_weight',
+                'shortcode'                  => 'lotzwoo_drained_net_weight',
+                'heading_option_key'         => 'heading_drained_net_weight_field',
+                'field_type'                 => 'text',
+                'settings_label'             => __('Abtropfgewicht', 'lotzapp-for-woocommerce'),
+                'settings_description'       => __('Aktiviert ein Textfeld fuer das Abtropfgewicht.', 'lotzapp-for-woocommerce'),
+                'product_field_label'        => __('Abtropfgewicht', 'lotzapp-for-woocommerce'),
+                'product_field_description'  => __('Abtropfgewicht der Packung (z. B. 250 g).', 'lotzapp-for-woocommerce'),
+                'variation_field_label'      => __('Abtropfgewicht', 'lotzapp-for-woocommerce'),
+                'variation_field_description'=> __('Abtropfgewicht fuer diese Variante.', 'lotzapp-for-woocommerce'),
+                'sanitize_callback'          => 'sanitize_text_field',
+            ],
             'base_price' => [
                 'slug'                       => 'base_price',
+                'group'                      => self::GROUP_BASICS,
                 'option_key'                 => 'enable_base_price_field',
                 'meta_key'                   => '_lotzwoo_base_price',
                 'shortcode'                  => 'lotzwoo_base_price',
@@ -52,6 +93,7 @@ class Field_Registry
             ],
             'base_unit' => [
                 'slug'                       => 'base_unit',
+                'group'                      => self::GROUP_BASICS,
                 'option_key'                 => 'enable_base_unit_field',
                 'meta_key'                   => '_lotzwoo_base_unit',
                 'shortcode'                  => 'lotzwoo_base_unit',
@@ -67,6 +109,7 @@ class Field_Registry
             ],
             'allergens' => [
                 'slug'                       => 'allergens',
+                'group'                      => self::GROUP_INGREDIENTS,
                 'option_key'                 => 'enable_allergen_field',
                 'meta_key'                   => '_lotzwoo_allergens',
                 'shortcode'                  => 'lotzwoo_allergens',
@@ -84,6 +127,7 @@ class Field_Registry
             ],
             'ingredients' => [
                 'slug'                       => 'ingredients',
+                'group'                      => self::GROUP_INGREDIENTS,
                 'option_key'                 => 'enable_ingredient_field',
                 'meta_key'                   => '_lotzwoo_ingredients',
                 'shortcode'                  => 'lotzwoo_ingredients',
@@ -101,6 +145,7 @@ class Field_Registry
             ],
             'ingredients_quid' => [
                 'slug'                       => 'ingredients_quid',
+                'group'                      => self::GROUP_INGREDIENTS,
                 'option_key'                 => 'enable_ingredients_quid_field',
                 'meta_key'                   => '_lotzwoo_ingredients_quid',
                 'shortcode'                  => 'lotzwoo_ingredients_quid',
@@ -117,6 +162,7 @@ class Field_Registry
             ],
             'shelf_life' => [
                 'slug'                       => 'shelf_life',
+                'group'                      => self::GROUP_STORAGE,
                 'option_key'                 => 'enable_shelf_life_field',
                 'meta_key'                   => '_lotzwoo_shelf_life',
                 'shortcode'                  => 'lotzwoo_shelf_life',
@@ -134,6 +180,7 @@ class Field_Registry
             ],
             'storage' => [
                 'slug'                       => 'storage',
+                'group'                      => self::GROUP_STORAGE,
                 'option_key'                 => 'enable_storage_field',
                 'meta_key'                   => '_lotzwoo_storage',
                 'shortcode'                  => 'lotzwoo_storage',
@@ -151,6 +198,7 @@ class Field_Registry
             ],
             'origin' => [
                 'slug'                       => 'origin',
+                'group'                      => self::GROUP_MEAT,
                 'option_key'                 => 'enable_origin_field',
                 'meta_key'                   => '_lotzwoo_origin',
                 'shortcode'                  => 'lotzwoo_origin',
@@ -167,6 +215,7 @@ class Field_Registry
             ],
             'origin_born_in' => [
                 'slug'                       => 'origin_born_in',
+                'group'                      => self::GROUP_MEAT,
                 'option_key'                 => 'enable_origin_born_in_field',
                 'meta_key'                   => '_lotzwoo_origin_born_in',
                 'shortcode'                  => 'lotzwoo_origin_born_in',
@@ -183,6 +232,7 @@ class Field_Registry
             ],
             'origin_raised_in' => [
                 'slug'                       => 'origin_raised_in',
+                'group'                      => self::GROUP_MEAT,
                 'option_key'                 => 'enable_origin_raised_in_field',
                 'meta_key'                   => '_lotzwoo_origin_raised_in',
                 'shortcode'                  => 'lotzwoo_origin_raised_in',
@@ -199,6 +249,7 @@ class Field_Registry
             ],
             'origin_slaughtered_in' => [
                 'slug'                       => 'origin_slaughtered_in',
+                'group'                      => self::GROUP_MEAT,
                 'option_key'                 => 'enable_origin_slaughtered_in_field',
                 'meta_key'                   => '_lotzwoo_origin_slaughtered_in',
                 'shortcode'                  => 'lotzwoo_origin_slaughtered_in',
@@ -215,6 +266,7 @@ class Field_Registry
             ],
             'origin_cut_in' => [
                 'slug'                       => 'origin_cut_in',
+                'group'                      => self::GROUP_MEAT,
                 'option_key'                 => 'enable_origin_cut_in_field',
                 'meta_key'                   => '_lotzwoo_origin_cut_in',
                 'shortcode'                  => 'lotzwoo_origin_cut_in',
@@ -231,6 +283,7 @@ class Field_Registry
             ],
             'storage_temperature' => [
                 'slug'                       => 'storage_temperature',
+                'group'                      => self::GROUP_STORAGE,
                 'option_key'                 => 'enable_storage_temperature_field',
                 'meta_key'                   => '_lotzwoo_storage_temperature',
                 'shortcode'                  => 'lotzwoo_storage_temperature',
@@ -247,6 +300,7 @@ class Field_Registry
             ],
             'alcohol_by_volume' => [
                 'slug'                       => 'alcohol_by_volume',
+                'group'                      => self::GROUP_MISC,
                 'option_key'                 => 'enable_alcohol_by_volume_field',
                 'meta_key'                   => '_lotzwoo_alcohol_by_volume',
                 'shortcode'                  => 'lotzwoo_alcohol_by_volume',
@@ -266,6 +320,7 @@ class Field_Registry
             ],
             'nutrition' => [
                 'slug'                       => 'nutrition',
+                'group'                      => self::GROUP_INGREDIENTS,
                 'option_key'                 => 'enable_nutrition_field',
                 'meta_key'                   => '_lotzwoo_nutrition',
                 'shortcode'                  => 'lotzwoo_nutrition',
@@ -282,6 +337,7 @@ class Field_Registry
             ],
             'nutrition_short' => [
                 'slug'                       => 'nutrition_short',
+                'group'                      => self::GROUP_INGREDIENTS,
                 'option_key'                 => 'enable_nutrition_short_field',
                 'meta_key'                   => '_lotzwoo_nutrition_short',
                 'shortcode'                  => 'lotzwoo_nutrition_short',
@@ -298,6 +354,7 @@ class Field_Registry
             ],
             'vegan_label' => [
                 'slug'                       => 'vegan_label',
+                'group'                      => self::GROUP_CLAIMS,
                 'option_key'                 => 'enable_vegan_label_field',
                 'meta_key'                   => '_lotzwoo_vegan_label',
                 'shortcode'                  => 'lotzwoo_vegan_label',
@@ -313,6 +370,7 @@ class Field_Registry
             ],
             'organic_label' => [
                 'slug'                       => 'organic_label',
+                'group'                      => self::GROUP_CLAIMS,
                 'option_key'                 => 'enable_organic_label_field',
                 'meta_key'                   => '_lotzwoo_organic_label',
                 'shortcode'                  => 'lotzwoo_organic_label',
@@ -328,6 +386,7 @@ class Field_Registry
             ],
             'organic_cert_number' => [
                 'slug'                       => 'organic_cert_number',
+                'group'                      => self::GROUP_CLAIMS,
                 'option_key'                 => 'enable_organic_cert_number_field',
                 'meta_key'                   => '_lotzwoo_organic_cert_number',
                 'shortcode'                  => 'lotzwoo_organic_cert_number',
@@ -344,6 +403,7 @@ class Field_Registry
             ],
             'organic_origin' => [
                 'slug'                       => 'organic_origin',
+                'group'                      => self::GROUP_CLAIMS,
                 'option_key'                 => 'enable_organic_origin_field',
                 'meta_key'                   => '_lotzwoo_organic_origin',
                 'shortcode'                  => 'lotzwoo_organic_origin',
@@ -360,6 +420,7 @@ class Field_Registry
             ],
             'deposit' => [
                 'slug'                       => 'deposit',
+                'group'                      => self::GROUP_MISC,
                 'option_key'                 => 'enable_deposit_field',
                 'meta_key'                   => '_lotzwoo_deposit',
                 'shortcode'                  => 'lotzwoo_deposit',
@@ -375,6 +436,7 @@ class Field_Registry
             ],
             'withdrawal_exclusion' => [
                 'slug'                       => 'withdrawal_exclusion',
+                'group'                      => self::GROUP_MISC,
                 'option_key'                 => 'enable_withdrawal_exclusion_field',
                 'meta_key'                   => '_lotzwoo_withdrawal_exclusion',
                 'shortcode'                  => 'lotzwoo_withdrawal_exclusion',
@@ -390,6 +452,7 @@ class Field_Registry
             ],
             'age_restriction' => [
                 'slug'                       => 'age_restriction',
+                'group'                      => self::GROUP_MISC,
                 'option_key'                 => 'enable_age_restriction_field',
                 'meta_key'                   => '_lotzwoo_age_restriction',
                 'shortcode'                  => 'lotzwoo_age_restriction',
@@ -408,6 +471,48 @@ class Field_Registry
                 ],
             ],
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function groups(): array
+    {
+        return [
+            self::GROUP_BASICS      => __('Basisangaben (inkl. Pfand)', 'lotzapp-for-woocommerce'),
+            self::GROUP_INGREDIENTS => __('Inhaltsstoffe & Hinweise', 'lotzapp-for-woocommerce'),
+            self::GROUP_MEAT        => __('Fleisch (Herkunft)', 'lotzapp-for-woocommerce'),
+            self::GROUP_CLAIMS      => __('Auslobung (Bio & Vegan)', 'lotzapp-for-woocommerce'),
+            self::GROUP_STORAGE     => __('Lagerung & Haltbarkeit', 'lotzapp-for-woocommerce'),
+            self::GROUP_MISC        => __('Sonstiges', 'lotzapp-for-woocommerce'),
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public static function grouped_fields(): array
+    {
+        $grouped = [];
+        foreach (self::groups() as $slug => $label) {
+            $grouped[$slug] = [
+                'label'  => $label,
+                'fields' => [],
+            ];
+        }
+
+        foreach (self::all() as $field) {
+            $group = $field['group'] ?? self::GROUP_BASICS;
+            if (!isset($grouped[$group])) {
+                $grouped[$group] = [
+                    'label'  => $group,
+                    'fields' => [],
+                ];
+            }
+            $grouped[$group]['fields'][] = $field;
+        }
+
+        return $grouped;
     }
 
     /**

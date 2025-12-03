@@ -21,6 +21,7 @@ class Settings_Page
     {
         add_action('admin_menu', [$this, 'add_menu']);
         add_action('admin_init', [$this, 'register_settings']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('admin_post_lotzwoo_create_buffer', [$this, 'handle_create_buffer']);
         add_action('admin_post_lotzwoo_create_image_management_page', [$this, 'handle_create_image_management_page']);
         add_action('admin_post_lotzwoo_create_menu_planning_page', [$this, 'handle_create_menu_planning_page']);
@@ -87,8 +88,12 @@ class Settings_Page
             $general_page
         );
 
-        foreach (Field_Registry::all() as $field) {
-            $this->register_field_toggle($general_page, $field);
+        foreach (Field_Registry::grouped_fields() as $group_slug => $group) {
+            if (empty($group['fields'])) {
+                continue;
+            }
+            $label = is_string($group['label'] ?? '') ? $group['label'] : '';
+            $this->register_field_group($general_page, (string) $group_slug, $label, $group['fields']);
         }
 
         add_settings_section(
@@ -397,56 +402,109 @@ class Settings_Page
         );
     }
 
-    /**
-     * @param array<string, mixed> $field
-     */
-    private function register_field_toggle(string $page, array $field): void
+    public function enqueue_assets(string $hook_suffix): void
     {
+        if ($hook_suffix !== 'woocommerce_page_lotzwoo-settings') {
+            return;
+        }
+
+        $css_file = trailingslashit(LOTZWOO_PLUGIN_DIR) . 'assets/css/admin.css';
+        $css_url  = plugins_url('assets/css/admin.css', LOTZWOO_PLUGIN_FILE);
+        $version  = file_exists($css_file) ? (string) filemtime($css_file) : '1.0.0';
+
+        wp_enqueue_style('lotzwoo-admin-settings', $css_url, [], $version);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $fields
+     */
+    private function register_field_group(string $page, string $group_slug, string $group_label, array $fields): void
+    {
+        if (empty($fields)) {
+            return;
+        }
+
         $this->ensure_field_toggle_script();
 
+        $sanitized_slug = sanitize_key($group_slug);
+        $row_class      = 'lotzwoo-field-group-row lotzwoo-field-group-row-' . sanitize_html_class($sanitized_slug);
+        $field_id       = 'lotzwoo_field_group_' . $sanitized_slug;
+        $content_id     = 'lotzwoo-field-group-content-' . $sanitized_slug;
+
         add_settings_field(
-            $field['option_key'],
-            $field['settings_label'],
-            function () use ($field) {
-                $option_key = $field['option_key'];
-                $is_enabled = (bool) Plugin::opt($option_key);
-                $checked    = $is_enabled ? 'checked' : '';
-                $target_id  = 'lotzwoo-field-details-' . esc_attr($field['slug']);
-
-                echo '<label><input type="checkbox" name="lotzwoo_options[' . esc_attr($option_key) . ']" value="1" ' . $checked . ' data-lotzwoo-toggle="1" data-target="' . esc_attr($target_id) . '" /> ';
-                echo esc_html($field['settings_description']) . '</label>';
-
-                $style_attr = $is_enabled ? '' : ' style="display:none;"';
-                echo '<div id="' . $target_id . '" class="lotzwoo-field-details"' . $style_attr . '>';
-
-                if (!empty($field['heading_option_key'])) {
-                    $template_value = Plugin::opt($field['heading_option_key'], '');
-                    $input_id       = 'lotzwoo_template_' . esc_attr($field['slug']);
-                    $placeholder    = Field_Registry::TEMPLATE_PLACEHOLDER;
-                    echo '<p><label for="' . $input_id . '">' . esc_html__('HTML-Template für die Ausgabe', 'lotzapp-for-woocommerce') . '</label><br />';
-                    echo '<textarea id="' . $input_id . '" name="lotzwoo_options[' . esc_attr($field['heading_option_key']) . ']" rows="2" class="large-text code">' . esc_textarea((string) $template_value) . '</textarea>';
-                    $description = sprintf(
-                        __('Muss den Platzhalter %s enthalten, der durch den Feldwert ersetzt wird.', 'lotzapp-for-woocommerce'),
-                        '<code>' . esc_html($placeholder) . '</code>'
-                    );
-                    echo '<span class="description">' . wp_kses_post($description) . '</span>';
-                    echo '</p>';
+            $field_id,
+            '',
+            function () use ($group_slug, $group_label, $fields, $content_id, $sanitized_slug) {
+                $container_id = 'lotzwoo-field-group-' . esc_attr($sanitized_slug);
+                $label        = $group_label !== '' ? $group_label : $group_slug;
+                echo '<div id="' . $container_id . '" class="lotzwoo-field-group" data-lotzwoo-group="' . esc_attr($group_slug) . '">';
+                echo '<button type="button" class="lotzwoo-field-group__toggle" aria-expanded="false" aria-controls="' . esc_attr($content_id) . '">';
+                echo '<span class="lotzwoo-field-group__title">' . esc_html($label) . '</span>';
+                echo '<span class="dashicons dashicons-arrow-right-alt2 lotzwoo-field-group__indicator" aria-hidden="true"></span>';
+                echo '</button>';
+                echo '<div class="lotzwoo-field-group__content" id="' . esc_attr($content_id) . '" hidden>';
+                foreach ($fields as $field) {
+                    $this->render_field_toggle($field);
                 }
-
-                $shortcodes = isset($field['shortcode']) ? [$field['shortcode']] : ($field['shortcodes'] ?? []);
-                if (!empty($shortcodes)) {
-                    echo '<p class="description">' . esc_html__('Shortcodes:', 'lotzapp-for-woocommerce');
-                    foreach ($shortcodes as $code) {
-                        echo ' <code>' . esc_html($code) . '</code>';
-                    }
-                    echo '</p>';
-                }
-
+                echo '</div>';
                 echo '</div>';
             },
             $page,
-            'lotzwoo_general_wc_fields'
+            'lotzwoo_general_wc_fields',
+            [
+                'class' => $row_class,
+            ]
         );
+    }
+
+    /**
+     * @param array<string, mixed> $field
+     */
+    private function render_field_toggle(array $field): void
+    {
+        $option_key = $field['option_key'];
+        $is_enabled = (bool) Plugin::opt($option_key);
+        $checked    = $is_enabled ? 'checked' : '';
+        $slug       = sanitize_key($field['slug']);
+        $target_id  = 'lotzwoo-field-details-' . $slug;
+
+        echo '<div class="lotzwoo-field-toggle" data-lotzwoo-field="' . esc_attr($slug) . '">';
+        echo '<label class="lotzwoo-field-toggle__main">';
+        echo '<input type="checkbox" name="lotzwoo_options[' . esc_attr($option_key) . ']" value="1" ' . $checked . ' data-lotzwoo-toggle="1" data-target="' . esc_attr($target_id) . '" />';
+        echo '<span class="lotzwoo-field-toggle__texts">';
+        echo '<span class="lotzwoo-field-toggle__name">' . esc_html($field['settings_label']) . '</span>';
+        echo '<span class="lotzwoo-field-toggle__description">' . esc_html($field['settings_description']) . '</span>';
+        echo '</span>';
+        echo '</label>';
+
+        $style_attr = $is_enabled ? '' : ' style="display:none;"';
+        echo '<div id="' . $target_id . '" class="lotzwoo-field-details"' . $style_attr . '>';
+
+        if (!empty($field['heading_option_key'])) {
+            $template_value = Plugin::opt($field['heading_option_key'], '');
+            $input_id       = 'lotzwoo_template_' . esc_attr($slug);
+            $placeholder    = Field_Registry::TEMPLATE_PLACEHOLDER;
+            echo '<p><label for="' . $input_id . '">' . esc_html__('HTML-Template fuer die Ausgabe', 'lotzapp-for-woocommerce') . '</label><br />';
+            echo '<textarea id="' . $input_id . '" name="lotzwoo_options[' . esc_attr($field['heading_option_key']) . ']" rows="2" class="large-text code">' . esc_textarea((string) $template_value) . '</textarea>';
+            $description = sprintf(
+                __('Muss den Platzhalter %s enthalten, der durch den Feldwert ersetzt wird.', 'lotzapp-for-woocommerce'),
+                '<code>' . esc_html($placeholder) . '</code>'
+            );
+            echo '<span class="description">' . wp_kses_post($description) . '</span>';
+            echo '</p>';
+        }
+
+        $shortcodes = isset($field['shortcode']) ? [$field['shortcode']] : ($field['shortcodes'] ?? []);
+        if (!empty($shortcodes)) {
+            echo '<p class="description">' . esc_html__('Shortcodes:', 'lotzapp-for-woocommerce');
+            foreach ($shortcodes as $code) {
+                echo ' <code>' . esc_html($code) . '</code>';
+            }
+            echo '</p>';
+        }
+
+        echo '</div>';
+        echo '</div>';
     }
 
     private function ensure_field_toggle_script(): void
@@ -466,6 +524,66 @@ class Settings_Page
             return;
         }
         ?>
+        <style>
+        .lotzwoo-field-group-row > th {
+            display: none;
+        }
+        .lotzwoo-field-group {
+            border: 1px solid #dcdcde;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            background: #fff;
+        }
+        .lotzwoo-field-group__toggle {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .lotzwoo-field-group__indicator {
+            transition: transform 0.2s ease;
+        }
+        .lotzwoo-field-group__toggle[aria-expanded="true"] .lotzwoo-field-group__indicator {
+            transform: rotate(90deg);
+        }
+        .lotzwoo-field-group__content {
+            padding: 0 16px 8px;
+            border-top: 1px solid #dcdcde;
+        }
+        .lotzwoo-field-toggle {
+            padding: 16px 0;
+            border-bottom: 1px solid #f0f0f1;
+        }
+        .lotzwoo-field-toggle:last-child {
+            border-bottom: 0;
+        }
+        .lotzwoo-field-toggle__main {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .lotzwoo-field-toggle__texts {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .lotzwoo-field-toggle__name {
+            font-weight: 600;
+        }
+        .lotzwoo-field-toggle__description {
+            color: #50575e;
+        }
+        .lotzwoo-field-details {
+            margin-left: 28px;
+            margin-top: 8px;
+        }
+        </style>
         <script>
         (function(){
             function toggleDetails(input){
@@ -483,7 +601,7 @@ class Settings_Page
                 container.style.display = input.checked ? '' : 'none';
             }
 
-            function init(){
+            function initToggleDetails(){
                 var toggles = document.querySelectorAll('[data-lotzwoo-toggle="1"]');
                 toggles.forEach(function(toggle){
                     toggleDetails(toggle);
@@ -491,6 +609,51 @@ class Settings_Page
                         toggleDetails(toggle);
                     });
                 });
+            }
+
+            function initAccordion(){
+                var groups = Array.prototype.slice.call(document.querySelectorAll('.lotzwoo-field-group'));
+                if (!groups.length) {
+                    return;
+                }
+                groups.forEach(function(group, index){
+                    var toggle = group.querySelector('.lotzwoo-field-group__toggle');
+                    var content = group.querySelector('.lotzwoo-field-group__content');
+                    if (!toggle || !content) {
+                        return;
+                    }
+                    var open = index === 0;
+                    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    content.hidden = !open;
+                    toggle.addEventListener('click', function(){
+                        var isOpen = toggle.getAttribute('aria-expanded') === 'true';
+                        if (isOpen) {
+                            toggle.setAttribute('aria-expanded', 'false');
+                            content.hidden = true;
+                            return;
+                        }
+                        groups.forEach(function(other){
+                            if (other === group) {
+                                return;
+                            }
+                            var otherToggle = other.querySelector('.lotzwoo-field-group__toggle');
+                            var otherContent = other.querySelector('.lotzwoo-field-group__content');
+                            if (otherToggle) {
+                                otherToggle.setAttribute('aria-expanded', 'false');
+                            }
+                            if (otherContent) {
+                                otherContent.hidden = true;
+                            }
+                        });
+                        toggle.setAttribute('aria-expanded', 'true');
+                        content.hidden = false;
+                    });
+                });
+            }
+
+            function init(){
+                initToggleDetails();
+                initAccordion();
             }
 
             if (document.readyState === 'loading') {
@@ -644,15 +807,15 @@ class Settings_Page
      */
     private function sanitize_field_template(string $raw_value, string $existing_value, array $field): string
     {
-        $value = trim($raw_value);
+        $placeholder = Field_Registry::TEMPLATE_PLACEHOLDER;
+        $value       = trim($raw_value);
         if ($value === '') {
-            return '';
+            return $placeholder;
         }
 
-        $placeholder = Field_Registry::TEMPLATE_PLACEHOLDER;
         if (strpos($value, $placeholder) === false) {
             $message = sprintf(
-                __('Das Template für „%s“ muss den Platzhalter %s enthalten.', 'lotzapp-for-woocommerce'),
+                __('Das Template für «%s» muss den Platzhalter %s enthalten.', 'lotzapp-for-woocommerce'),
                 isset($field['settings_label']) ? $field['settings_label'] : (isset($field['slug']) ? $field['slug'] : ''),
                 '<code>' . esc_html($placeholder) . '</code>'
             );
@@ -665,9 +828,14 @@ class Settings_Page
             return $existing_value;
         }
 
-        $sanitized = wp_kses_post($value);
-        return trim($sanitized);
+        $sanitized = trim(wp_kses_post($value));
+        if ($sanitized === '') {
+            return $placeholder;
+        }
+
+        return $sanitized;
     }
+
 
     /**
      * @return array<string, string>
@@ -1208,3 +1376,4 @@ class Settings_Page
         return (int) $post_id;
     }
 }
+
