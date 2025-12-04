@@ -50,6 +50,7 @@ class Settings_Page
 
         $general_page        = 'lotzwoo-settings-general';
         $prices_page         = 'lotzwoo-settings-ca-prices';
+        $price_display_page  = 'lotzwoo-settings-price-display';
         $images_page         = 'lotzwoo-settings-product-images';
         $menu_planning_page  = 'lotzwoo-settings-menu-planning';
         $emails_page         = 'lotzwoo-settings-emails';
@@ -318,6 +319,109 @@ class Settings_Page
         );
 
         add_settings_section(
+            'lotzwoo_price_display',
+            __('Preisanzeige-Vorlagen', 'lotzapp-for-woocommerce'),
+            function () {
+                echo '<p>' . esc_html__('Steuert optionale HTML-Templates f&uuml;r die wichtigsten WooCommerce-Preisfelder. Verwende den Platzhalter {{value}}. Sollte ein WooCommerce Preisanzeige-Suffix aktiv sein, wird es innerhalb des value Platzhalters ausgegeben.', 'lotzapp-for-woocommerce') . '</p>';
+            },
+            $price_display_page
+        );
+
+        $price_display_groups = [
+            'single-product' => [
+                'label'       => __('Einzelproduktseite', 'lotzapp-for-woocommerce'),
+                'description' => __('Ersetzt den Standardpreis einfacher Produkte direkt auf der Produktseite.', 'lotzapp-for-woocommerce'),
+                'fields'      => [
+                    [
+                        'option_key'            => 'price_display_single_enabled',
+                        'slug'                  => 'single_product_price',
+                        'settings_label'        => __('Produktpreis (einfaches Produkt)', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Wirkt auf woocommerce_get_price_html bzw. den Preisblock in single-product/price.php.', 'lotzapp-for-woocommerce'),
+                        'heading_option_key'    => 'price_display_single_template',
+                    ],
+                    [
+                        'option_key'            => 'price_display_single_regular_enabled',
+                        'slug'                  => 'single_product_regular',
+                        'settings_label'        => __('Regulärer Preis (Streichpreis)', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Greift, sobald woocommerce_product_get_regular_price & sale-Markup (<del>) im Template erscheinen.', 'lotzapp-for-woocommerce'),
+                        'heading_option_key'    => 'price_display_single_regular_template',
+                    ],
+                    [
+                        'option_key'            => 'price_display_single_sale_enabled',
+                        'slug'                  => 'single_product_sale',
+                        'settings_label'        => __('Aktueller Preis (Sale)', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Wird auf den <ins>-Block bzw. woocommerce_product_get_sale_price angewendet.', 'lotzapp-for-woocommerce'),
+                        'heading_option_key'    => 'price_display_single_sale_template',
+                    ],
+                ],
+            ],
+            'variable-products' => [
+                'label'       => __('Variable Produkte', 'lotzapp-for-woocommerce'),
+                'description' => __('Standard: WooCommerce zeigt den Spannenpreis als „min – max“ an und aktualisiert nach Variantenauswahl den Preis im JSON.', 'lotzapp-for-woocommerce'),
+                'fields'      => [
+                    [
+                        'option_key'            => 'price_display_variable_range_enabled',
+                        'slug'                  => 'variable_price_range',
+                        'settings_label'        => __('Von-bis Preis Template', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Standard: Ausgabe wie „12,00 € – 18,00 €“ oberhalb des Buttons. Platzhalter: {{value}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
+                        'heading_option_key'    => 'price_display_variable_range_template',
+                    ],
+                    [
+                        'option_key'            => 'price_display_variable_sale_enabled',
+                        'slug'                  => 'variable_price_sale',
+                        'settings_label'        => __('Sale Range Template', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Standard: <del>Regelpreis-Range</del> <ins>Aktuelle Range</ins> wenn Rabatt aktiv ist. Platzhalter: {{value}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
+                        'heading_option_key'    => 'price_display_variable_sale_template',
+                    ],
+                    [
+                        'option_key'            => 'price_display_variable_selection_enabled',
+                        'slug'                  => 'variable_price_selection',
+                        'settings_label'        => __('Ausgewaehlte Variante (bei Add to Cart Button) Template', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Standard: Variation-JavaScript nutzt price_html / display_price (z.B. „15,00 €“).', 'lotzapp-for-woocommerce'),
+                        'heading_option_key'    => 'price_display_variable_selection_template',
+                    ],
+                ],
+            ],
+            'loop-products' => [
+                'label'       => __('Shopseite, Archive, Produktkacheln', 'lotzapp-for-woocommerce'),
+                'description' => __('Geplante Anpassung der Listen- und Kachelpreise.', 'lotzapp-for-woocommerce'),
+                'fields'      => [],
+            ],
+            'grouped-products' => [
+                'label'       => __('Gruppierte Produkte', 'lotzapp-for-woocommerce'),
+                'description' => __('Konfiguration f&uuml;r gruppierte Preisangaben folgt.', 'lotzapp-for-woocommerce'),
+                'fields'      => [],
+            ],
+            'cart' => [
+                'label'       => __('Warenkorb', 'lotzapp-for-woocommerce'),
+                'description' => __('Cart-Preis-Theming (Zeilensummen, Versand etc.) wird vorbereitet.', 'lotzapp-for-woocommerce'),
+                'fields'      => [],
+            ],
+            'checkout' => [
+                'label'       => __('Checkout', 'lotzapp-for-woocommerce'),
+                'description' => __('Checkout-spezifische Templates folgen.', 'lotzapp-for-woocommerce'),
+                'fields'      => [],
+            ],
+            'emails' => [
+                'label'       => __('E-Mails', 'lotzapp-for-woocommerce'),
+                'description' => __('Angepasste Preis-Templates in WooCommerce-E-Mails werden erg&auml;nzt.', 'lotzapp-for-woocommerce'),
+                'fields'      => [],
+            ],
+            'mini-cart' => [
+                'label'       => __('Mini-Cart', 'lotzapp-for-woocommerce'),
+                'description' => __('Unterst&uuml;tzung f&uuml;r Off-Canvas / Mini-Cart-Preise folgt.', 'lotzapp-for-woocommerce'),
+                'fields'      => [],
+            ],
+        ];
+
+        foreach ($price_display_groups as $slug => $group) {
+            $fields = isset($group['fields']) ? (array) $group['fields'] : [];
+            $description = isset($group['description']) ? (string) $group['description'] : '';
+            $label = isset($group['label']) ? (string) $group['label'] : (string) $slug;
+            $this->register_field_group($price_display_page, (string) $slug, $label, $fields, 'lotzwoo_price_display', $description);
+        }
+
+        add_settings_section(
             'lotzwoo_emails',
             __('WooCommerce Emails', 'lotzapp-for-woocommerce'),
             function () {
@@ -418,9 +522,9 @@ class Settings_Page
     /**
      * @param array<int, array<string, mixed>> $fields
      */
-    private function register_field_group(string $page, string $group_slug, string $group_label, array $fields): void
+    private function register_field_group(string $page, string $group_slug, string $group_label, array $fields, string $section = 'lotzwoo_general_wc_fields', string $group_description = ''): void
     {
-        if (empty($fields)) {
+        if (empty($fields) && $group_description === '') {
             return;
         }
 
@@ -434,7 +538,7 @@ class Settings_Page
         add_settings_field(
             $field_id,
             '',
-            function () use ($group_slug, $group_label, $fields, $content_id, $sanitized_slug) {
+            function () use ($group_slug, $group_label, $fields, $content_id, $sanitized_slug, $group_description) {
                 $container_id = 'lotzwoo-field-group-' . esc_attr($sanitized_slug);
                 $label        = $group_label !== '' ? $group_label : $group_slug;
                 echo '<div id="' . $container_id . '" class="lotzwoo-field-group" data-lotzwoo-group="' . esc_attr($group_slug) . '">';
@@ -443,6 +547,9 @@ class Settings_Page
                 echo '<span class="dashicons dashicons-arrow-right-alt2 lotzwoo-field-group__indicator" aria-hidden="true"></span>';
                 echo '</button>';
                 echo '<div class="lotzwoo-field-group__content" id="' . esc_attr($content_id) . '" hidden>';
+                if ($group_description !== '') {
+                    echo '<p class="description lotzwoo-field-group__description">' . esc_html($group_description) . '</p>';
+                }
                 foreach ($fields as $field) {
                     $this->render_field_toggle($field);
                 }
@@ -450,7 +557,7 @@ class Settings_Page
                 echo '</div>';
             },
             $page,
-            'lotzwoo_general_wc_fields',
+            $section,
             [
                 'class' => $row_class,
             ]
@@ -555,6 +662,10 @@ class Settings_Page
         .lotzwoo-field-group__content {
             padding: 0 16px 8px;
             border-top: 1px solid #dcdcde;
+        }
+        .lotzwoo-field-group__description {
+            margin: 12px 0 8px;
+            color: #50575e;
         }
         .lotzwoo-field-toggle {
             padding: 16px 0;
@@ -768,6 +879,12 @@ class Settings_Page
         $options['menu_planning_time']       = isset($input['menu_planning_time']) ? $this->sanitize_menu_planning_time((string) $input['menu_planning_time']) : $this->sanitize_menu_planning_time((string) $options['menu_planning_time']);
         $options['menu_planning_show_backend_links'] = !empty($input['menu_planning_show_backend_links']) ? 1 : 0;
         $options['show_range_note']      = !empty($input['show_range_note']) ? 1 : 0;
+        $options['price_display_single_enabled'] = !empty($input['price_display_single_enabled']) ? 1 : 0;
+        $options['price_display_single_regular_enabled'] = !empty($input['price_display_single_regular_enabled']) ? 1 : 0;
+        $options['price_display_single_sale_enabled'] = !empty($input['price_display_single_sale_enabled']) ? 1 : 0;
+        $options['price_display_variable_range_enabled'] = !empty($input['price_display_variable_range_enabled']) ? 1 : 0;
+        $options['price_display_variable_sale_enabled'] = !empty($input['price_display_variable_sale_enabled']) ? 1 : 0;
+        $options['price_display_variable_selection_enabled'] = !empty($input['price_display_variable_selection_enabled']) ? 1 : 0;
         $options['emails_tracking_enabled'] = !empty($input['emails_tracking_enabled']) ? 1 : 0;
         $options['emails_invoice_enabled']  = !empty($input['emails_invoice_enabled']) ? 1 : 0;
         $default_email_template          = $this->default_email_tracking_template();
@@ -794,6 +911,81 @@ class Settings_Page
             }
         }
 
+        $current_single_template = Plugin::opt('price_display_single_template', Field_Registry::TEMPLATE_PLACEHOLDER);
+        $raw_single_template     = isset($input['price_display_single_template']) ? (string) $input['price_display_single_template'] : (string) $current_single_template;
+        $options['price_display_single_template'] = $this->sanitize_field_template(
+            $raw_single_template,
+            (string) $current_single_template,
+            [
+                'slug'           => 'price_display_single_template',
+                'settings_label' => __('Produktpreis (einfaches Produkt)', 'lotzapp-for-woocommerce'),
+            ]
+        );
+
+        $current_regular_template = Plugin::opt('price_display_single_regular_template', Field_Registry::TEMPLATE_PLACEHOLDER);
+        $raw_regular_template     = isset($input['price_display_single_regular_template']) ? (string) $input['price_display_single_regular_template'] : (string) $current_regular_template;
+        $options['price_display_single_regular_template'] = $this->sanitize_field_template(
+            $raw_regular_template,
+            (string) $current_regular_template,
+            [
+                'slug'           => 'price_display_single_regular_template',
+                'settings_label' => __('Regulärer Preis (Streichpreis)', 'lotzapp-for-woocommerce'),
+            ]
+        );
+
+        $current_sale_template = Plugin::opt('price_display_single_sale_template', Field_Registry::TEMPLATE_PLACEHOLDER);
+        $raw_sale_template     = isset($input['price_display_single_sale_template']) ? (string) $input['price_display_single_sale_template'] : (string) $current_sale_template;
+        $options['price_display_single_sale_template'] = $this->sanitize_field_template(
+            $raw_sale_template,
+            (string) $current_sale_template,
+            [
+                'slug'           => 'price_display_single_sale_template',
+                'settings_label' => __('Aktueller Preis (Sale)', 'lotzapp-for-woocommerce'),
+            ]
+        );
+
+        $range_placeholders = [
+            Field_Registry::TEMPLATE_PLACEHOLDER,
+            '{{minvalue}}',
+            '{{maxvalue}}',
+            '{{prefixed_minvalue}}',
+            '{{prefixed_maxvalue}}',
+        ];
+        $current_variable_range_template = Plugin::opt('price_display_variable_range_template', Field_Registry::TEMPLATE_PLACEHOLDER);
+        $raw_variable_range_template     = isset($input['price_display_variable_range_template']) ? (string) $input['price_display_variable_range_template'] : (string) $current_variable_range_template;
+        $options['price_display_variable_range_template'] = $this->sanitize_field_template(
+            $raw_variable_range_template,
+            (string) $current_variable_range_template,
+            [
+                'slug'           => 'price_display_variable_range_template',
+                'settings_label' => __('Von-bis Preis Template', 'lotzapp-for-woocommerce'),
+            ],
+            $range_placeholders
+        );
+
+        $current_variable_sale_template = Plugin::opt('price_display_variable_sale_template', Field_Registry::TEMPLATE_PLACEHOLDER);
+        $raw_variable_sale_template     = isset($input['price_display_variable_sale_template']) ? (string) $input['price_display_variable_sale_template'] : (string) $current_variable_sale_template;
+        $options['price_display_variable_sale_template'] = $this->sanitize_field_template(
+            $raw_variable_sale_template,
+            (string) $current_variable_sale_template,
+            [
+                'slug'           => 'price_display_variable_sale_template',
+                'settings_label' => __('Sale Range Template', 'lotzapp-for-woocommerce'),
+            ],
+            $range_placeholders
+        );
+
+        $current_variable_selection_template = Plugin::opt('price_display_variable_selection_template', Field_Registry::TEMPLATE_PLACEHOLDER);
+        $raw_variable_selection_template     = isset($input['price_display_variable_selection_template']) ? (string) $input['price_display_variable_selection_template'] : (string) $current_variable_selection_template;
+        $options['price_display_variable_selection_template'] = $this->sanitize_field_template(
+            $raw_variable_selection_template,
+            (string) $current_variable_selection_template,
+            [
+                'slug'           => 'price_display_variable_selection_template',
+                'settings_label' => __('Frontend Auswahl-Preis Template', 'lotzapp-for-woocommerce'),
+            ]
+        );
+
         $selectors_raw            = isset($input['locked_fields']) ? (string) $input['locked_fields'] : '';
         $options['locked_fields'] = array_values(array_unique(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $selectors_raw)))));
 
@@ -805,7 +997,7 @@ class Settings_Page
     /**
      * @param array<string, mixed> $field
      */
-    private function sanitize_field_template(string $raw_value, string $existing_value, array $field): string
+    private function sanitize_field_template(string $raw_value, string $existing_value, array $field, array $allowed_placeholders = [Field_Registry::TEMPLATE_PLACEHOLDER]): string
     {
         $placeholder = Field_Registry::TEMPLATE_PLACEHOLDER;
         $value       = trim($raw_value);
@@ -813,11 +1005,28 @@ class Settings_Page
             return $placeholder;
         }
 
-        if (strpos($value, $placeholder) === false) {
+        $allowed = array_values(array_unique(array_filter(array_map('trim', $allowed_placeholders))));
+        if (empty($allowed)) {
+            $allowed = [$placeholder];
+        }
+
+        $contains_placeholder = false;
+        foreach ($allowed as $token) {
+            if ($token !== '' && strpos($value, $token) !== false) {
+                $contains_placeholder = true;
+                break;
+            }
+        }
+
+        if (!$contains_placeholder) {
+            $label = isset($field['settings_label']) ? $field['settings_label'] : (isset($field['slug']) ? $field['slug'] : '');
+            $tokens = implode(', ', array_map(static function ($token) {
+                return '<code>' . esc_html($token) . '</code>';
+            }, $allowed));
             $message = sprintf(
-                __('Das Template für «%s» muss den Platzhalter %s enthalten.', 'lotzapp-for-woocommerce'),
-                isset($field['settings_label']) ? $field['settings_label'] : (isset($field['slug']) ? $field['slug'] : ''),
-                '<code>' . esc_html($placeholder) . '</code>'
+                __('Das Template für „%1$s“ muss mindestens einen der folgenden Platzhalter enthalten: %2$s', 'lotzapp-for-woocommerce'),
+                $label,
+                $tokens
             );
             add_settings_error(
                 'lotzwoo_settings',
@@ -912,7 +1121,7 @@ class Settings_Page
         $tab  = in_array($tab, ['general', 'ca-prices', 'product-images', 'menu-planning', 'emails'], true) ? $tab : 'general';
         $tabs = [
             'general'   => __('Allgemein', 'lotzapp-for-woocommerce'),
-            'ca-prices' => __('Ca-Preise', 'lotzapp-for-woocommerce'),
+            'ca-prices' => __('Preise', 'lotzapp-for-woocommerce'),
             'product-images' => __('Produktbilder', 'lotzapp-for-woocommerce'),
             'menu-planning'  => __('Menüplanung', 'lotzapp-for-woocommerce'),
             'emails'    => __('Emails', 'lotzapp-for-woocommerce'),
@@ -943,6 +1152,10 @@ class Settings_Page
                     do_settings_sections('lotzwoo-settings-ca-prices');
                     $ca_sections_html = (string) ob_get_clean();
 
+                    ob_start();
+                    do_settings_sections('lotzwoo-settings-price-display');
+                    $price_display_html = (string) ob_get_clean();
+
                     $heading_html = '';
                     $intro_html   = '';
 
@@ -961,7 +1174,7 @@ class Settings_Page
                     $ca_sections_html = ltrim($ca_sections_html);
 
                     if ($heading_html === '') {
-                        $heading_html = '<h2>' . esc_html__('Ca-Preise', 'lotzapp-for-woocommerce') . '</h2>';
+                        $heading_html = '<h2>' . esc_html__('Preise', 'lotzapp-for-woocommerce') . '</h2>';
                     }
                     if ($intro_html === '') {
                         $intro_html = '<p>' . esc_html__('Konfiguration der Ca.-Preiskennzeichnung und Buffer-Logik.', 'lotzapp-for-woocommerce') . '</p>';
@@ -984,7 +1197,7 @@ class Settings_Page
                         <?php echo $ca_sections_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                         <hr />
                         <h2><?php esc_html_e('10% Buffer-Artikel', 'lotzapp-for-woocommerce'); ?></h2>
-                        <p><?php esc_html_e('Erstellt einen virtuellen, im Shop unsichtbaren Buffer-Artikel.', 'lotzapp-for-woocommerce'); ?></p>
+                        <p><?php esc_html_e('Virtueller, im Shop unsichtbarer Buffer-Artikel, welcher automatisch unloeschbar in den Warenkorb gelegt wird, sobald dieser zumindest 1 Ca-Artikel enthaelt.', 'lotzapp-for-woocommerce'); ?></p>
                         <table class="form-table" role="presentation">
                             <tr>
                                 <th scope="row">
@@ -994,7 +1207,7 @@ class Settings_Page
                                     <input id="lotzwoo_buffer_product_id" type="number" name="lotzwoo_options[buffer_product_id]" value="<?php echo esc_attr($buffer_product_id); ?>" class="small-text" />
                                     <p class="description">
                                         <?php
-                                        echo esc_html__('Falls vorhanden. Wird beim Anlegen automatisch befuellt.', 'lotzapp-for-woocommerce');
+                                        echo esc_html__('Falls vorhanden. Wird beim Anlegen automatisch befuellt. Zum Anlegen des Buffer-Artikels den Button am Ende der Seite nutzen.', 'lotzapp-for-woocommerce');
                                         if ($buffer_edit_link) {
                                             echo '<br /><a href="' . esc_url($buffer_edit_link) . '">' . esc_html__('Buffer-Artikel bearbeiten', 'lotzapp-for-woocommerce') . '</a>';
                                         }
@@ -1004,6 +1217,12 @@ class Settings_Page
                             </tr>
                         </table>
                     </div>
+                    <?php if (trim($price_display_html) !== '') : ?>
+                        <hr />
+                        <div class="lotzwoo-price-display">
+                            <?php echo $price_display_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                        </div>
+                    <?php endif; ?>
                     <script>
                     (function() {
                         var checkbox = document.getElementById('lotzwoo_ca_prices_enabled');
