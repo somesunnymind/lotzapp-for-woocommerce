@@ -330,54 +330,54 @@ class Settings_Page
         $price_display_groups = [
             'single-product' => [
                 'label'       => __('Einzelproduktseite', 'lotzapp-for-woocommerce'),
-                'description' => __('Ersetzt den Standardpreis einfacher Produkte direkt auf der Produktseite.', 'lotzapp-for-woocommerce'),
+                'description' => __('Ersetzt den Standardpreis einfacher Produkte direkt auf der Produktseite. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
                 'fields'      => [
                     [
                         'option_key'            => 'price_display_single_enabled',
                         'slug'                  => 'single_product_price',
                         'settings_label'        => __('Produktpreis (einfaches Produkt)', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Wirkt auf woocommerce_get_price_html bzw. den Preisblock in single-product/price.php.', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Wirkt auf woocommerce_get_price_html bzw. den Preisblock in single-product/price.php. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_single_template',
                     ],
                     [
                         'option_key'            => 'price_display_single_regular_enabled',
                         'slug'                  => 'single_product_regular',
-                        'settings_label'        => __('RegulÃ¤rer Preis (Streichpreis)', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Greift, sobald woocommerce_product_get_regular_price & sale-Markup (<del>) im Template erscheinen.', 'lotzapp-for-woocommerce'),
+                        'settings_label'        => __('Regulärer Preis (Streichpreis)', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Greift, sobald woocommerce_product_get_regular_price & sale-Markup (<del>) im Template erscheinen. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_single_regular_template',
                     ],
                     [
                         'option_key'            => 'price_display_single_sale_enabled',
                         'slug'                  => 'single_product_sale',
                         'settings_label'        => __('Aktueller Preis (Sale)', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Wird auf den <ins>-Block bzw. woocommerce_product_get_sale_price angewendet.', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Wird auf den <ins>-Block bzw. woocommerce_product_get_sale_price angewendet. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_single_sale_template',
                     ],
                 ],
             ],
             'variable-products' => [
                 'label'       => __('Variable Produkte', 'lotzapp-for-woocommerce'),
-                'description' => __('Standard: WooCommerce zeigt den Spannenpreis als â€žmin â€“ maxâ€œ an und aktualisiert nach Variantenauswahl den Preis im JSON.', 'lotzapp-for-woocommerce'),
+                'description' => __('Standard: WooCommerce zeigt den Spannenpreis als „min – max“ an und aktualisiert nach Variantenauswahl den Preis im JSON. Platzhalter: {{value}}, {{ca_prefix}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
                 'fields'      => [
                     [
                         'option_key'            => 'price_display_variable_range_enabled',
                         'slug'                  => 'variable_price_range',
                         'settings_label'        => __('Von-bis Preis Template', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Standard: Ausgabe wie â€ž12,00 â‚¬ â€“ 18,00 â‚¬â€œ oberhalb des Buttons. Platzhalter: {{value}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Standard: Ausgabe wie „12,00 € – 18,00 €“ oberhalb des Buttons. Platzhalter: {{value}}, {{ca_prefix}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_variable_range_template',
                     ],
                     [
                         'option_key'            => 'price_display_variable_sale_enabled',
                         'slug'                  => 'variable_price_sale',
                         'settings_label'        => __('Sale Range Template', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Standard: <del>Regelpreis-Range</del> <ins>Aktuelle Range</ins> wenn Rabatt aktiv ist. Platzhalter: {{value}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Standard: <del>Regelpreis-Range</del> <ins>Aktuelle Range</ins> wenn Rabatt aktiv ist. Platzhalter: {{value}}, {{ca_prefix}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_variable_sale_template',
                     ],
                     [
                         'option_key'            => 'price_display_variable_selection_enabled',
                         'slug'                  => 'variable_price_selection',
-                        'settings_label'        => __('Ausgewaehlte Variante (bei Add to Cart Button) Template', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Standard: Variation-JavaScript nutzt price_html / display_price (z.B. â€ž15,00 â‚¬â€œ).', 'lotzapp-for-woocommerce'),
+                        'settings_label'        => __('Frontend Auswahl-Preis Template', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Standard: Variation-JavaScript nutzt price_html / display_price (z.B. „15,00 €“). Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_variable_selection_template',
                     ],
                 ],
@@ -389,32 +389,77 @@ class Settings_Page
             ],
             'grouped-products' => [
                 'label'       => __('Gruppierte Produkte', 'lotzapp-for-woocommerce'),
-                'description' => __('Konfiguration f&uuml;r gruppierte Preisangaben folgt.', 'lotzapp-for-woocommerce'),
-                'fields'      => [],
+                'description' => __('Konfiguration für gruppierte Preisangaben. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
+                'fields'      => [
+                    [
+                        'option_key'            => 'price_display_grouped_enabled',
+                        'slug'                  => 'grouped_product_price',
+                        'settings_label'        => __('Gruppenpreis', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Steuert die Anzeige von woocommerce_grouped_price_html.', 'lotzapp-for-woocommerce'),
+                        'heading_option_key'    => 'price_display_grouped_template',
+                    ],
+                ],
             ],
             'cart' => [
                 'label'       => __('Warenkorb', 'lotzapp-for-woocommerce'),
-                'description' => __('Cart-Preis-Theming (Zeilensummen, Versand etc.) wird vorbereitet.', 'lotzapp-for-woocommerce'),
-                'fields'      => [],
+                'description' => __('Cart-Preis-Theming (Zeilensummen, Versand etc.). Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
+                'fields'      => [
+                    [
+                        'option_key'            => 'price_display_cart_item_price_enabled',
+                        'slug'                  => 'cart_item_price',
+                        'settings_label'        => __('Artikelpreis im Warenkorb', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Wirkt auf woocommerce_cart_item_price (inkl. Mini-Cart).', 'lotzapp-for-woocommerce'),
+                        'heading_option_key'    => 'price_display_cart_item_price_template',
+                    ],
+                    [
+                        'option_key'            => 'price_display_cart_item_subtotal_enabled',
+                        'slug'                  => 'cart_item_subtotal',
+                        'settings_label'        => __('Artikelzwischensumme im Warenkorb', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Wirkt auf woocommerce_cart_item_subtotal.', 'lotzapp-for-woocommerce'),
+                        'heading_option_key'    => 'price_display_cart_item_subtotal_template',
+                    ],
+                ],
             ],
             'checkout' => [
                 'label'       => __('Checkout', 'lotzapp-for-woocommerce'),
-                'description' => __('Checkout-spezifische Templates folgen.', 'lotzapp-for-woocommerce'),
-                'fields'      => [],
+                'description' => __('Checkout- und Warenkorb-Zusammenfassung. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
+                'fields'      => [
+                    [
+                        'option_key'            => 'price_display_cart_subtotal_enabled',
+                        'slug'                  => 'cart_subtotal',
+                        'settings_label'        => __('Zwischensumme (Cart / Checkout)', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Wirkt auf woocommerce_cart_totals_subtotal_html und woocommerce_cart_subtotal.', 'lotzapp-for-woocommerce'),
+                        'heading_option_key'    => 'price_display_cart_subtotal_template',
+                    ],
+                    [
+                        'option_key'            => 'price_display_cart_total_enabled',
+                        'slug'                  => 'cart_total',
+                        'settings_label'        => __('Gesamtsumme (Cart / Checkout)', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Wirkt auf woocommerce_cart_totals_order_total_html.', 'lotzapp-for-woocommerce'),
+                        'heading_option_key'    => 'price_display_cart_total_template',
+                    ],
+                ],
             ],
             'emails' => [
                 'label'       => __('E-Mails', 'lotzapp-for-woocommerce'),
-                'description' => __('Angepasste Preis-Templates in WooCommerce-E-Mails werden erg&auml;nzt.', 'lotzapp-for-woocommerce'),
-                'fields'      => [],
+                'description' => __('Angepasste Preis-Templates in WooCommerce-E-Mails. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
+                'fields'      => [
+                    [
+                        'option_key'            => 'price_display_order_total_enabled',
+                        'slug'                  => 'order_total',
+                        'settings_label'        => __('Bestellsumme (E-Mails / Backend)', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Wirkt auf woocommerce_get_formatted_order_total.', 'lotzapp-for-woocommerce'),
+                        'heading_option_key'    => 'price_display_order_total_template',
+                    ],
+                ],
             ],
             'mini-cart' => [
                 'label'       => __('Mini-Cart', 'lotzapp-for-woocommerce'),
-                'description' => __('Unterst&uuml;tzung f&uuml;r Off-Canvas / Mini-Cart-Preise folgt.', 'lotzapp-for-woocommerce'),
+                'description' => __('Unterstützung für Off-Canvas / Mini-Cart-Preise folgt.', 'lotzapp-for-woocommerce'),
                 'fields'      => [],
             ],
         ];
-
-        foreach ($price_display_groups as $slug => $group) {
+foreach ($price_display_groups as $slug => $group) {
             $fields = isset($group['fields']) ? (array) $group['fields'] : [];
             $description = isset($group['description']) ? (string) $group['description'] : '';
             $label = isset($group['label']) ? (string) $group['label'] : (string) $slug;
@@ -434,6 +479,7 @@ class Settings_Page
             'emails_tracking_settings',
             __('Tracking-Links', 'lotzapp-for-woocommerce'),
             function () {
+         = [Field_Registry::TEMPLATE_PLACEHOLDER, '{{ca_prefix}}'];
                 $tracking_enabled = (bool) Plugin::opt('emails_tracking_enabled', 1);
                 $value            = (string) Plugin::opt('emails_tracking_template', $this->default_email_tracking_template());
                 $placeholder      = Field_Registry::TEMPLATE_PLACEHOLDER;
@@ -885,6 +931,12 @@ class Settings_Page
         $options['price_display_variable_range_enabled'] = !empty($input['price_display_variable_range_enabled']) ? 1 : 0;
         $options['price_display_variable_sale_enabled'] = !empty($input['price_display_variable_sale_enabled']) ? 1 : 0;
         $options['price_display_variable_selection_enabled'] = !empty($input['price_display_variable_selection_enabled']) ? 1 : 0;
+        ['price_display_grouped_enabled'] = !empty(['price_display_grouped_enabled']) ? 1 : 0;
+        ['price_display_cart_item_price_enabled'] = !empty(['price_display_cart_item_price_enabled']) ? 1 : 0;
+        ['price_display_cart_item_subtotal_enabled'] = !empty(['price_display_cart_item_subtotal_enabled']) ? 1 : 0;
+        ['price_display_cart_subtotal_enabled'] = !empty(['price_display_cart_subtotal_enabled']) ? 1 : 0;
+        ['price_display_cart_total_enabled'] = !empty(['price_display_cart_total_enabled']) ? 1 : 0;
+        ['price_display_order_total_enabled'] = !empty(['price_display_order_total_enabled']) ? 1 : 0;
         $options['emails_tracking_enabled'] = !empty($input['emails_tracking_enabled']) ? 1 : 0;
         $options['emails_invoice_enabled']  = !empty($input['emails_invoice_enabled']) ? 1 : 0;
         $default_email_template          = $this->default_email_tracking_template();
@@ -911,7 +963,159 @@ class Settings_Page
             }
         }
 
-        $current_single_template = Plugin::opt('price_display_single_template', Field_Registry::TEMPLATE_PLACEHOLDER);
+        $current_single_template        $current_single_template = Plugin::opt('price_display_single_template', '{{ca_prefix}}{{value}}');
+        $raw_single_template     = isset($input['price_display_single_template']) ? (string) $input['price_display_single_template'] : (string) $current_single_template;
+        $options['price_display_single_template'] = $this->sanitize_field_template(
+            $raw_single_template,
+            (string) $current_single_template,
+            [
+                'slug'           => 'price_display_single_template',
+                'settings_label' => __('Produktpreis (einfaches Produkt)', 'lotzapp-for-woocommerce'),
+            ],
+            $basic_placeholders
+        );
+
+        $current_regular_template = Plugin::opt('price_display_single_regular_template', '{{ca_prefix}}{{value}}');
+        $raw_regular_template     = isset($input['price_display_single_regular_template']) ? (string) $input['price_display_single_regular_template'] : (string) $current_regular_template;
+        $options['price_display_single_regular_template'] = $this->sanitize_field_template(
+            $raw_regular_template,
+            (string) $current_regular_template,
+            [
+                'slug'           => 'price_display_single_regular_template',
+                'settings_label' => __('Regulärer Preis (Streichpreis)', 'lotzapp-for-woocommerce'),
+            ],
+            $basic_placeholders
+        );
+
+        $current_sale_template = Plugin::opt('price_display_single_sale_template', '{{ca_prefix}}{{value}}');
+        $raw_sale_template     = isset($input['price_display_single_sale_template']) ? (string) $input['price_display_single_sale_template'] : (string) $current_sale_template;
+        $options['price_display_single_sale_template'] = $this->sanitize_field_template(
+            $raw_sale_template,
+            (string) $current_sale_template,
+            [
+                'slug'           => 'price_display_single_sale_template',
+                'settings_label' => __('Aktueller Preis (Sale)', 'lotzapp-for-woocommerce'),
+            ],
+            $basic_placeholders
+        );
+
+        $range_placeholders = [
+            Field_Registry::TEMPLATE_PLACEHOLDER,
+            '{{ca_prefix}}',
+            '{{minvalue}}',
+            '{{maxvalue}}',
+            '{{prefixed_minvalue}}',
+            '{{prefixed_maxvalue}}',
+        ];
+        $current_variable_range_template = Plugin::opt('price_display_variable_range_template', '{{ca_prefix}}{{value}}');
+        $raw_variable_range_template     = isset($input['price_display_variable_range_template']) ? (string) $input['price_display_variable_range_template'] : (string) $current_variable_range_template;
+        $options['price_display_variable_range_template'] = $this->sanitize_field_template(
+            $raw_variable_range_template,
+            (string) $current_variable_range_template,
+            [
+                'slug'           => 'price_display_variable_range_template',
+                'settings_label' => __('Von-bis Preis Template', 'lotzapp-for-woocommerce'),
+            ],
+            $range_placeholders
+        );
+
+        $current_variable_sale_template = Plugin::opt('price_display_variable_sale_template', '{{ca_prefix}}{{value}}');
+        $raw_variable_sale_template     = isset($input['price_display_variable_sale_template']) ? (string) $input['price_display_variable_sale_template'] : (string) $current_variable_sale_template;
+        $options['price_display_variable_sale_template'] = $this->sanitize_field_template(
+            $raw_variable_sale_template,
+            (string) $current_variable_sale_template,
+            [
+                'slug'           => 'price_display_variable_sale_template',
+                'settings_label' => __('Sale Range Template', 'lotzapp-for-woocommerce'),
+            ],
+            $range_placeholders
+        );
+
+        $current_variable_selection_template = Plugin::opt('price_display_variable_selection_template', '{{ca_prefix}}{{value}}');
+        $raw_variable_selection_template     = isset($input['price_display_variable_selection_template']) ? (string) $input['price_display_variable_selection_template'] : (string) $current_variable_selection_template;
+        $options['price_display_variable_selection_template'] = $this->sanitize_field_template(
+            $raw_variable_selection_template,
+            (string) $current_variable_selection_template,
+            [
+                'slug'           => 'price_display_variable_selection_template',
+                'settings_label' => __('Frontend Auswahl-Preis Template', 'lotzapp-for-woocommerce'),
+            ],
+            $basic_placeholders
+        );
+
+        $current_grouped_template = Plugin::opt('price_display_grouped_template', '{{ca_prefix}}{{value}}');
+        $raw_grouped_template     = isset($input['price_display_grouped_template']) ? (string) $input['price_display_grouped_template'] : (string) $current_grouped_template;
+        $options['price_display_grouped_template'] = $this->sanitize_field_template(
+            $raw_grouped_template,
+            (string) $current_grouped_template,
+            [
+                'slug'           => 'price_display_grouped_template',
+                'settings_label' => __('Gruppenpreis', 'lotzapp-for-woocommerce'),
+            ],
+            $basic_placeholders
+        );
+
+        $current_cart_item_price_template = Plugin::opt('price_display_cart_item_price_template', '{{ca_prefix}}{{value}}');
+        $raw_cart_item_price_template     = isset($input['price_display_cart_item_price_template']) ? (string) $input['price_display_cart_item_price_template'] : (string) $current_cart_item_price_template;
+        $options['price_display_cart_item_price_template'] = $this->sanitize_field_template(
+            $raw_cart_item_price_template,
+            (string) $current_cart_item_price_template,
+            [
+                'slug'           => 'price_display_cart_item_price_template',
+                'settings_label' => __('Artikelpreis im Warenkorb', 'lotzapp-for-woocommerce'),
+            ],
+            $basic_placeholders
+        );
+
+        $current_cart_item_subtotal_template = Plugin::opt('price_display_cart_item_subtotal_template', '{{ca_prefix}}{{value}}');
+        $raw_cart_item_subtotal_template     = isset($input['price_display_cart_item_subtotal_template']) ? (string) $input['price_display_cart_item_subtotal_template'] : (string) $current_cart_item_subtotal_template;
+        $options['price_display_cart_item_subtotal_template'] = $this->sanitize_field_template(
+            $raw_cart_item_subtotal_template,
+            (string) $current_cart_item_subtotal_template,
+            [
+                'slug'           => 'price_display_cart_item_subtotal_template',
+                'settings_label' => __('Artikelzwischensumme im Warenkorb', 'lotzapp-for-woocommerce'),
+            ],
+            $basic_placeholders
+        );
+
+        $current_cart_subtotal_template = Plugin::opt('price_display_cart_subtotal_template', '{{ca_prefix}}{{value}}');
+        $raw_cart_subtotal_template     = isset($input['price_display_cart_subtotal_template']) ? (string) $input['price_display_cart_subtotal_template'] : (string) $current_cart_subtotal_template;
+        $options['price_display_cart_subtotal_template'] = $this->sanitize_field_template(
+            $raw_cart_subtotal_template,
+            (string) $current_cart_subtotal_template,
+            [
+                'slug'           => 'price_display_cart_subtotal_template',
+                'settings_label' => __('Zwischensumme (Cart / Checkout)', 'lotzapp-for-woocommerce'),
+            ],
+            $basic_placeholders
+        );
+
+        $current_cart_total_template = Plugin::opt('price_display_cart_total_template', '{{ca_prefix}}{{value}}');
+        $raw_cart_total_template     = isset($input['price_display_cart_total_template']) ? (string) $input['price_display_cart_total_template'] : (string) $current_cart_total_template;
+        $options['price_display_cart_total_template'] = $this->sanitize_field_template(
+            $raw_cart_total_template,
+            (string) $current_cart_total_template,
+            [
+                'slug'           => 'price_display_cart_total_template',
+                'settings_label' => __('Gesamtsumme (Cart / Checkout)', 'lotzapp-for-woocommerce'),
+            ],
+            $basic_placeholders
+        );
+
+        $current_order_total_template = Plugin::opt('price_display_order_total_template', '{{ca_prefix}}{{value}}');
+        $raw_order_total_template     = isset($input['price_display_order_total_template']) ? (string) $input['price_display_order_total_template'] : (string) $current_order_total_template;
+        $options['price_display_order_total_template'] = $this->sanitize_field_template(
+            $raw_order_total_template,
+            (string) $current_order_total_template,
+            [
+                'slug'           => 'price_display_order_total_template',
+                'settings_label' => __('Bestellsumme (E-Mails / Backend)', 'lotzapp-for-woocommerce'),
+            ],
+            $basic_placeholders
+        );
+
+        $selectors_raw            = isset($input['locked_fields']) ? (string) $input['locked_fields'] : ''; = Plugin::opt('price_display_single_template', Field_Registry::TEMPLATE_PLACEHOLDER);
         $raw_single_template     = isset($input['price_display_single_template']) ? (string) $input['price_display_single_template'] : (string) $current_single_template;
         $options['price_display_single_template'] = $this->sanitize_field_template(
             $raw_single_template,
@@ -946,12 +1150,12 @@ class Settings_Page
 
         $range_placeholders = [
             Field_Registry::TEMPLATE_PLACEHOLDER,
+            '{{ca_prefix}}',
             '{{minvalue}}',
             '{{maxvalue}}',
             '{{prefixed_minvalue}}',
             '{{prefixed_maxvalue}}',
-        ];
-        $current_variable_range_template = Plugin::opt('price_display_variable_range_template', Field_Registry::TEMPLATE_PLACEHOLDER);
+        ];        $current_variable_range_template = Plugin::opt('price_display_variable_range_template', Field_Registry::TEMPLATE_PLACEHOLDER);
         $raw_variable_range_template     = isset($input['price_display_variable_range_template']) ? (string) $input['price_display_variable_range_template'] : (string) $current_variable_range_template;
         $options['price_display_variable_range_template'] = $this->sanitize_field_template(
             $raw_variable_range_template,
@@ -1595,4 +1799,9 @@ class Settings_Page
         return (int) $post_id;
     }
 }
+
+
+
+
+
 
