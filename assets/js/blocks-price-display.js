@@ -120,13 +120,39 @@
             if (!window.wp || !wp.data || typeof wp.data.select !== 'function') {
                 return;
             }
-            const store = wp.data.select('wc/store/cart');
-            if (!store || typeof store.getCartData !== 'function' || typeof store.getCartTotals !== 'function') {
-                return;
+
+            const sources = [
+                { key: 'wc/store/cart', dataMethod: 'getCartData', totalsMethod: 'getCartTotals' },
+                { key: 'wc/store/checkout', dataMethod: 'getCheckoutData', totalsMethod: 'getCartTotals' },
+                { key: 'wc/store/checkout', dataMethod: 'getCartData', totalsMethod: 'getTotals' },
+            ];
+
+            let ext = null;
+            let totals = null;
+
+            for (let i = 0; i < sources.length; i++) {
+                const src = sources[i];
+                const sel = wp.data.select(src.key);
+                if (!sel) {
+                    continue;
+                }
+                const getData = sel[src.dataMethod];
+                const getTotals = sel[src.totalsMethod];
+                if (typeof getData !== 'function') {
+                    continue;
+                }
+                const data = getData.call(sel);
+                if (data && data.extensions && data.extensions.lotzwoo) {
+                    ext = data.extensions.lotzwoo;
+                }
+                if (typeof getTotals === 'function') {
+                    totals = getTotals.call(sel);
+                }
+                if (ext) {
+                    break;
+                }
             }
-            const data = store.getCartData();
-            const totals = store.getCartTotals();
-            const ext = data && data.extensions && data.extensions.lotzwoo;
+
             if (!ext || !ext.cart_subtotal_html) {
                 return;
             }
@@ -173,13 +199,22 @@
         }
     }
 
-    // Run once and on cart updates.
-    patchSubtotalFromStore();
-    decodeMarkup();
+    // Run once and on cart updates / DOM changes.
+    const rerun = () => {
+        patchSubtotalFromStore();
+        decodeMarkup();
+    };
+
+    rerun();
+
     if (window.wp && wp.data && typeof wp.data.subscribe === 'function') {
-        wp.data.subscribe(() => {
-            patchSubtotalFromStore();
-            decodeMarkup();
+        wp.data.subscribe(rerun);
+    }
+
+    if (window.MutationObserver) {
+        const observer = new MutationObserver(() => {
+            rerun();
         });
+        observer.observe(document.body, { childList: true, subtree: true });
     }
 })();
