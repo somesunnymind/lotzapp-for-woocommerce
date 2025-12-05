@@ -1,3 +1,14 @@
+/*Akkordions*/
 .lotzwoo-field-group-row > td {
     padding: 0;
 }
+
+/* P R E I S E */
+
+/*Custom CSS Field*/
+.lotzwoo-price-display-custom-css-row {
+    display: flex;
+    flex-direction: column;
+}
+
+

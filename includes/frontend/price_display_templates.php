@@ -26,6 +26,7 @@ class Price_Display_Templates
         add_filter('woocommerce_cart_subtotal', [$this, 'filter_cart_subtotal'], 50, 3);
         add_filter('woocommerce_cart_totals_order_total_html', [$this, 'filter_cart_totals_order_total_html'], 50, 1);
         add_filter('woocommerce_get_formatted_order_total', [$this, 'filter_order_total'], 50, 2);
+        add_action('wp_head', [$this, 'output_custom_css'], 120);
 
     }
 
@@ -215,6 +216,21 @@ class Price_Display_Templates
         }
 
         return $this->apply_template($templates['order_total']['template'], $formatted_total, $this->build_order_context($order));
+    }
+
+    public function output_custom_css(): void
+    {
+        $css = Plugin::opt('price_display_custom_css', '');
+        if (!is_string($css)) {
+            $css = '';
+        }
+
+        $css = sanitize_textarea_field($css);
+        if ($css === '') {
+            return;
+        }
+
+        echo "<style id=\"lotzwoo-price-display-custom-css\">\n" . $css . "\n</style>\n";
     }
 
     private function get_single_product_templates(): array

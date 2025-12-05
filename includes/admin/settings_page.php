@@ -383,11 +383,6 @@ class Settings_Page
                     ],
                 ],
             ],
-            'loop-products' => [
-                'label'       => __('Shopseite, Archive, Produktkacheln', 'lotzapp-for-woocommerce'),
-                'description' => __('Geplante Anpassung der Listen- und Kachelpreise.', 'lotzapp-for-woocommerce'),
-                'fields'      => [],
-            ],
             'grouped-products' => [
                 'label'       => __('Gruppierte Produkte', 'lotzapp-for-woocommerce'),
                 'description' => __('Konfiguration für gruppierte Preisangaben. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
@@ -466,6 +461,23 @@ foreach ($price_display_groups as $slug => $group) {
             $label = isset($group['label']) ? (string) $group['label'] : (string) $slug;
             $this->register_field_group($price_display_page, (string) $slug, $label, $fields, 'lotzwoo_price_display', $description);
         }
+
+        add_settings_field(
+            'price_display_custom_css',
+            __('Template-spezifisches CSS', 'lotzapp-for-woocommerce'),
+            function () {
+                $value = (string) Plugin::opt('price_display_custom_css', '');
+                $placeholder = ".lotzwoo-price-badge {\n    font-size: 0.85rem;\n}";
+                echo '<textarea name="lotzwoo_options[price_display_custom_css]" rows="6" class="large-text code" placeholder="' . esc_attr($placeholder) . '">' . esc_textarea($value) . '</textarea>';
+                echo '<p class="description">' . esc_html__('Optionaler CSS-Block, der unterhalb der Preis-Akkordeons gespeichert wird und im Frontend als Inline-Style erscheint.', 'lotzapp-for-woocommerce') . '</p>';
+            },
+            $price_display_page,
+            'lotzwoo_price_display'
+       ,
+            [
+                'class' => 'lotzwoo-price-display-custom-css-row',
+            ]
+        );
 
         add_settings_section(
             'lotzwoo_emails',
@@ -937,6 +949,10 @@ foreach ($price_display_groups as $slug => $group) {
         $options['price_display_cart_subtotal_enabled'] = !empty($input['price_display_cart_subtotal_enabled']) ? 1 : 0;
         $options['price_display_cart_total_enabled'] = !empty($input['price_display_cart_total_enabled']) ? 1 : 0;
         $options['price_display_order_total_enabled'] = !empty($input['price_display_order_total_enabled']) ? 1 : 0;
+        $options['price_display_custom_css'] = isset($input['price_display_custom_css'])
+            ? $this->sanitize_price_display_custom_css((string) $input['price_display_custom_css'])
+            : $this->sanitize_price_display_custom_css((string) Plugin::opt('price_display_custom_css', $options['price_display_custom_css']));
+
         $options['emails_tracking_enabled'] = !empty($input['emails_tracking_enabled']) ? 1 : 0;
         $options['emails_invoice_enabled']  = !empty($input['emails_invoice_enabled']) ? 1 : 0;
         $default_email_template          = $this->default_email_tracking_template();
@@ -1248,6 +1264,14 @@ foreach ($price_display_groups as $slug => $group) {
         }
 
         return $sanitized;
+    }
+
+
+    private function sanitize_price_display_custom_css(string $raw_css): string
+    {
+        $css = sanitize_textarea_field($raw_css);
+        $css = (string) preg_replace('/[ \t]+$/m', '', $css);
+        return trim($css);
     }
 
 

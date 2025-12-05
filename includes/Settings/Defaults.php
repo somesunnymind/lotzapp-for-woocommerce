@@ -40,6 +40,7 @@ class Defaults
             'price_display_cart_total_template' => '{{ca_prefix}}{{value}}',
             'price_display_order_total_enabled' => 1,
             'price_display_order_total_template' => '{{ca_prefix}}{{value}}',
+            'price_display_custom_css' => '',
             'buffer_product_id'        => 0,
             'image_management_page_id' => 0,
             'menu_planning_page_id'    => 0,
