@@ -19,6 +19,7 @@ class Settings_Page
 
     public function __construct()
     {
+        $current_single_template = Plugin::opt('price_display_single_template', '{{ca_prefix}}{{value}}');
         add_action('admin_menu', [$this, 'add_menu']);
         add_action('admin_init', [$this, 'register_settings']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
@@ -479,7 +480,6 @@ foreach ($price_display_groups as $slug => $group) {
             'emails_tracking_settings',
             __('Tracking-Links', 'lotzapp-for-woocommerce'),
             function () {
-         = [Field_Registry::TEMPLATE_PLACEHOLDER, '{{ca_prefix}}'];
                 $tracking_enabled = (bool) Plugin::opt('emails_tracking_enabled', 1);
                 $value            = (string) Plugin::opt('emails_tracking_template', $this->default_email_tracking_template());
                 $placeholder      = Field_Registry::TEMPLATE_PLACEHOLDER;
@@ -931,12 +931,12 @@ foreach ($price_display_groups as $slug => $group) {
         $options['price_display_variable_range_enabled'] = !empty($input['price_display_variable_range_enabled']) ? 1 : 0;
         $options['price_display_variable_sale_enabled'] = !empty($input['price_display_variable_sale_enabled']) ? 1 : 0;
         $options['price_display_variable_selection_enabled'] = !empty($input['price_display_variable_selection_enabled']) ? 1 : 0;
-        ['price_display_grouped_enabled'] = !empty(['price_display_grouped_enabled']) ? 1 : 0;
-        ['price_display_cart_item_price_enabled'] = !empty(['price_display_cart_item_price_enabled']) ? 1 : 0;
-        ['price_display_cart_item_subtotal_enabled'] = !empty(['price_display_cart_item_subtotal_enabled']) ? 1 : 0;
-        ['price_display_cart_subtotal_enabled'] = !empty(['price_display_cart_subtotal_enabled']) ? 1 : 0;
-        ['price_display_cart_total_enabled'] = !empty(['price_display_cart_total_enabled']) ? 1 : 0;
-        ['price_display_order_total_enabled'] = !empty(['price_display_order_total_enabled']) ? 1 : 0;
+        $options['price_display_grouped_enabled'] = !empty($input['price_display_grouped_enabled']) ? 1 : 0;
+        $options['price_display_cart_item_price_enabled'] = !empty($input['price_display_cart_item_price_enabled']) ? 1 : 0;
+        $options['price_display_cart_item_subtotal_enabled'] = !empty($input['price_display_cart_item_subtotal_enabled']) ? 1 : 0;
+        $options['price_display_cart_subtotal_enabled'] = !empty($input['price_display_cart_subtotal_enabled']) ? 1 : 0;
+        $options['price_display_cart_total_enabled'] = !empty($input['price_display_cart_total_enabled']) ? 1 : 0;
+        $options['price_display_order_total_enabled'] = !empty($input['price_display_order_total_enabled']) ? 1 : 0;
         $options['emails_tracking_enabled'] = !empty($input['emails_tracking_enabled']) ? 1 : 0;
         $options['emails_invoice_enabled']  = !empty($input['emails_invoice_enabled']) ? 1 : 0;
         $default_email_template          = $this->default_email_tracking_template();
@@ -961,9 +961,9 @@ foreach ($price_display_groups as $slug => $group) {
                 $raw_template     = isset($input[$field['heading_option_key']]) ? (string) $input[$field['heading_option_key']] : '';
                 $options[$field['heading_option_key']] = $this->sanitize_field_template($raw_template, (string) $current_template, $field);
             }
+        $basic_placeholders = [Field_Registry::TEMPLATE_PLACEHOLDER, '{{ca_prefix}}'];
         }
-
-        $current_single_template        $current_single_template = Plugin::opt('price_display_single_template', '{{ca_prefix}}{{value}}');
+        $current_single_template = Plugin::opt('price_display_single_template', '{{ca_prefix}}{{value}}');
         $raw_single_template     = isset($input['price_display_single_template']) ? (string) $input['price_display_single_template'] : (string) $current_single_template;
         $options['price_display_single_template'] = $this->sanitize_field_template(
             $raw_single_template,
@@ -1115,7 +1115,8 @@ foreach ($price_display_groups as $slug => $group) {
             $basic_placeholders
         );
 
-        $selectors_raw            = isset($input['locked_fields']) ? (string) $input['locked_fields'] : ''; = Plugin::opt('price_display_single_template', Field_Registry::TEMPLATE_PLACEHOLDER);
+        $selectors_raw            = isset($input['locked_fields']) ? (string) $input['locked_fields'] : '';
+        
         $raw_single_template     = isset($input['price_display_single_template']) ? (string) $input['price_display_single_template'] : (string) $current_single_template;
         $options['price_display_single_template'] = $this->sanitize_field_template(
             $raw_single_template,

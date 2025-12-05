@@ -14,26 +14,21 @@ class Price_Display_Templates
 {
     public function __construct()
     {
-        add_filter(''woocommerce_get_price_html'', [$this, ''filter_simple_price_html''], 50, 2);
-        add_filter(''woocommerce_grouped_price_html'', [$this, ''filter_grouped_price_html''], 50, 2);
-        add_filter(''woocommerce_variable_price_html'', [$this, ''filter_variable_price_html''], 50, 2);
-        add_filter(''woocommerce_variable_sale_price_html'', [$this, ''filter_variable_sale_price_html''], 50, 2);
-        add_filter(''woocommerce_available_variation'', [$this, ''filter_available_variation_data''], 30, 3);
+        add_filter('woocommerce_get_price_html', [$this, 'filter_simple_price_html'], 50, 2);
+        add_filter('woocommerce_grouped_price_html', [$this, 'filter_grouped_price_html'], 50, 2);
+        add_filter('woocommerce_variable_price_html', [$this, 'filter_variable_price_html'], 50, 2);
+        add_filter('woocommerce_variable_sale_price_html', [$this, 'filter_variable_sale_price_html'], 50, 2);
+        add_filter('woocommerce_available_variation', [$this, 'filter_available_variation_data'], 30, 3);
 
-        add_filter(''woocommerce_cart_item_price'', [$this, ''filter_cart_item_price''], 50, 3);
-        add_filter(''woocommerce_cart_item_subtotal'', [$this, ''filter_cart_item_subtotal''], 50, 3);
-        add_filter(''woocommerce_cart_totals_subtotal_html'', [$this, ''filter_cart_subtotal_html''], 50, 1);
-        add_filter(''woocommerce_cart_subtotal'', [$this, ''filter_cart_subtotal''], 50, 3);
-        add_filter(''woocommerce_cart_totals_order_total_html'', [$this, ''filter_cart_total_html''], 50, 1);
-        add_filter(''woocommerce_get_formatted_order_total'', [$this, ''filter_order_total''], 50, 2);
+        add_filter('woocommerce_cart_item_price', [$this, 'filter_cart_item_price'], 50, 3);
+        add_filter('woocommerce_cart_item_subtotal', [$this, 'filter_cart_item_subtotal'], 50, 3);
+        add_filter('woocommerce_cart_totals_subtotal_html', [$this, 'filter_cart_totals_subtotal_html'], 50, 1);
+        add_filter('woocommerce_cart_subtotal', [$this, 'filter_cart_subtotal'], 50, 3);
+        add_filter('woocommerce_cart_totals_order_total_html', [$this, 'filter_cart_totals_order_total_html'], 50, 1);
+        add_filter('woocommerce_get_formatted_order_total', [$this, 'filter_order_total'], 50, 2);
 
-        add_action(''enqueue_block_assets'', [$this, ''enqueue_blocks_bridge'']);
     }
 
-    /**
-     * @param string      $price_html
-     * @param \WC_Product $product
-     */
     public function filter_simple_price_html($price_html, $product)
     {
         if (!$product instanceof \WC_Product || !$product->is_type('simple')) {
@@ -49,7 +44,7 @@ class Price_Display_Templates
             return $price_html;
         }
 
-        $context = ['{{ca_prefix}}' => Estimated::is_estimated_product($product) ? esc_html(trim((string) Plugin::opt('price_prefix', 'Ca. '))) . ' ' : ''];
+        $context = $this->build_product_context($product);
         $updated_html = $price_html;
 
         if ($product->is_on_sale()) {
@@ -70,69 +65,65 @@ class Price_Display_Templates
         return $updated_html;
     }
 
-    /**
-     * @param string                $price_html
-     * @param \WC_Product_Variable $product
-     */
+    public function filter_grouped_price_html($price_html, $product)
+    {
+        if (!$product instanceof \WC_Product) {
+            return $price_html;
+        }
+
+        $template = $this->get_grouped_template();
+        if (!$template['enabled']) {
+            return $price_html;
+        }
+
+        return $this->apply_template($template['template'], $price_html, $this->build_product_context($product));
+    }
+
     public function filter_variable_price_html($price_html, $product)
     {
-        if (!$this->should_handle_variable_product($product)) {
+        if (!$product instanceof \WC_Product_Variable) {
             return $price_html;
         }
 
         $templates = $this->get_variable_templates();
         $context   = $this->get_variable_placeholder_context($product);
-        if ($product->is_on_sale()) {
-            if ($templates['sale']['enabled']) {
-                return $this->apply_template($templates['sale']['template'], $price_html, $context);
-            }
+        $default_html = $this->format_variable_range_html($product);
+
+        if ($product->is_on_sale() && $templates['sale']['enabled']) {
+            return $this->apply_template($templates['sale']['template'], $this->format_variable_sale_range_html($product), $context);
         }
 
         if ($templates['range']['enabled']) {
-            return $this->apply_template($templates['range']['template'], $price_html, $context);
+            return $this->apply_template($templates['range']['template'], $default_html, $context);
         }
 
         return $price_html;
     }
 
-    /**
-     * @param string                $price_html
-     * @param \WC_Product_Variable $product
-     */
     public function filter_variable_sale_price_html($price_html, $product)
     {
-        if (!$this->should_handle_variable_product($product)) {
+        if (!$product instanceof \WC_Product_Variable) {
             return $price_html;
         }
 
         $templates = $this->get_variable_templates();
         $context   = $this->get_variable_placeholder_context($product);
+        $default_html = $this->format_variable_sale_range_html($product);
+
         if ($templates['sale']['enabled']) {
-            return $this->apply_template($templates['sale']['template'], $price_html, $context);
+            return $this->apply_template($templates['sale']['template'], $default_html, $context);
         }
 
         if ($templates['range']['enabled']) {
-            return $this->apply_template($templates['range']['template'], $price_html, $context);
+            return $this->apply_template($templates['range']['template'], $this->format_variable_range_html($product), $context);
         }
 
         return $price_html;
     }
 
-    /**
-     * @param array<string,mixed>   $variation_data
-     * @param \WC_Product_Variable  $product
-     * @param \WC_Product_Variation $variation
-     * @return array<string,mixed>
-     */
     public function filter_available_variation_data($variation_data, $product, $variation)
     {
         if (!$variation instanceof \WC_Product_Variation) {
-            return $variation_data;
-        }
-
-        $parent = $variation->get_parent_id();
-        $variation_product = $product instanceof \WC_Product_Variable ? $product : ($parent ? wc_get_product($parent) : null);
-        if (!$this->should_handle_variable_product($variation_product)) {
             return $variation_data;
         }
 
@@ -141,95 +132,163 @@ class Price_Display_Templates
             return $variation_data;
         }
 
-        $template = $templates['selection']['template'];
-
+        $context = $this->build_product_context($variation);
         if (!empty($variation_data['price_html'])) {
-            $variation_data['price_html'] = $this->apply_template($template, (string) $variation_data['price_html']);
+            $variation_data['price_html'] = $this->apply_template($templates['selection']['template'], (string) $variation_data['price_html'], $context);
         }
 
         if (isset($variation_data['display_price'])) {
             $formatted = function_exists('wc_price') ? wc_price((float) $variation_data['display_price']) : (string) $variation_data['display_price'];
-            $variation_data['lotzwoo_display_price_html'] = $this->apply_template($template, $formatted);
+            $variation_data['lotzwoo_display_price_html'] = $this->apply_template($templates['selection']['template'], $formatted, $context);
         }
 
         return $variation_data;
     }
 
-    /**
-     * @param mixed $product
-     */
-    private function should_handle_single_product($product): bool
+    public function filter_cart_item_price($price_html, $cart_item, $cart_item_key)
     {
+        $templates = $this->get_cart_templates();
+        if (!$templates['item_price']['enabled']) {
+            return $price_html;
+        }
+
+        $product = isset($cart_item['data']) ? $cart_item['data'] : null;
         if (!$product instanceof \WC_Product) {
-            return false;
+            return $price_html;
         }
 
-        if (!$product->is_type('simple')) {
-            return false;
-        }
-
-        if (is_admin() && !(function_exists('wp_doing_ajax') && wp_doing_ajax())) {
-            return false;
-        }
-
-        $is_single_context = function_exists('is_product') && is_product();
-        if (!$is_single_context) {
-            $is_single_context = did_action('woocommerce_single_product_summary') > 0;
-        }
-
-        return (bool) $is_single_context;
+        return $this->apply_template($templates['item_price']['template'], $price_html, $this->build_product_context($product));
     }
 
-    /**
-     * @param mixed $product
-     */
-    private function should_handle_variable_product($product): bool
+    public function filter_cart_item_subtotal($subtotal_html, $cart_item, $cart_item_key)
     {
-        return $product instanceof \WC_Product_Variable;
+        $templates = $this->get_cart_templates();
+        if (!$templates['item_subtotal']['enabled']) {
+            return $subtotal_html;
+        }
+
+        $product = isset($cart_item['data']) ? $cart_item['data'] : null;
+        if (!$product instanceof \WC_Product) {
+            return $subtotal_html;
+        }
+
+        return $this->apply_template($templates['item_subtotal']['template'], $subtotal_html, $this->build_product_context($product));
     }
 
-    /**
-     * @return array<string, array{enabled:bool,template:string}>
-     */
+    public function filter_cart_totals_subtotal_html($subtotal_html)
+    {
+        $cart = $this->resolve_cart();
+        $templates = $this->get_cart_templates();
+        if (!$templates['subtotal']['enabled']) {
+            return $subtotal_html;
+        }
+
+        return $this->apply_template($templates['subtotal']['template'], $subtotal_html, $this->build_cart_context($cart));
+    }
+
+    public function filter_cart_subtotal($cart_subtotal, $compound, $cart)
+    {
+        $templates = $this->get_cart_templates();
+        if (!$templates['subtotal']['enabled']) {
+            return $cart_subtotal;
+        }
+
+        return $this->apply_template($templates['subtotal']['template'], $cart_subtotal, $this->build_cart_context($cart));
+    }
+
+    public function filter_cart_totals_order_total_html($total_html)
+    {
+        $cart = $this->resolve_cart();
+        $templates = $this->get_cart_templates();
+        if (!$templates['total']['enabled']) {
+            return $total_html;
+        }
+
+        return $this->apply_template($templates['total']['template'], $total_html, $this->build_cart_totals_context($cart));
+    }
+
+    public function filter_order_total($formatted_total, $order)
+    {
+        $templates = $this->get_order_templates();
+        if (!$templates['order_total']['enabled']) {
+            return $formatted_total;
+        }
+
+        return $this->apply_template($templates['order_total']['template'], $formatted_total, $this->build_order_context($order));
+    }
+
     private function get_single_product_templates(): array
     {
-        $placeholder = Field_Registry::TEMPLATE_PLACEHOLDER;
-
         return [
             'main'    => [
-                'enabled'  => (bool) Plugin::opt('price_display_single_enabled'),
-                'template' => (string) Plugin::opt('price_display_single_template', $placeholder),
+                'enabled'  => (bool) Plugin::opt('price_display_single_enabled', 1),
+                'template' => (string) Plugin::opt('price_display_single_template', '{{ca_prefix}}{{value}}'),
             ],
             'regular' => [
-                'enabled'  => (bool) Plugin::opt('price_display_single_regular_enabled'),
-                'template' => (string) Plugin::opt('price_display_single_regular_template', $placeholder),
+                'enabled'  => (bool) Plugin::opt('price_display_single_regular_enabled', 1),
+                'template' => (string) Plugin::opt('price_display_single_regular_template', '{{ca_prefix}}{{value}}'),
             ],
             'sale'    => [
-                'enabled'  => (bool) Plugin::opt('price_display_single_sale_enabled'),
-                'template' => (string) Plugin::opt('price_display_single_sale_template', $placeholder),
+                'enabled'  => (bool) Plugin::opt('price_display_single_sale_enabled', 1),
+                'template' => (string) Plugin::opt('price_display_single_sale_template', '{{ca_prefix}}{{value}}'),
             ],
         ];
     }
 
-    /**
-     * @return array<string, array{enabled:bool,template:string}>
-     */
+    private function get_grouped_template(): array
+    {
+        return [
+            'enabled'  => (bool) Plugin::opt('price_display_grouped_enabled', 1),
+            'template' => (string) Plugin::opt('price_display_grouped_template', '{{ca_prefix}}{{value}}'),
+        ];
+    }
+
     private function get_variable_templates(): array
     {
-        $placeholder = Field_Registry::TEMPLATE_PLACEHOLDER;
-
         return [
             'range'      => [
-                'enabled'  => (bool) Plugin::opt('price_display_variable_range_enabled'),
-                'template' => (string) Plugin::opt('price_display_variable_range_template', $placeholder),
+                'enabled'  => (bool) Plugin::opt('price_display_variable_range_enabled', 1),
+                'template' => (string) Plugin::opt('price_display_variable_range_template', '{{ca_prefix}}{{value}}'),
             ],
             'sale'       => [
-                'enabled'  => (bool) Plugin::opt('price_display_variable_sale_enabled'),
-                'template' => (string) Plugin::opt('price_display_variable_sale_template', $placeholder),
+                'enabled'  => (bool) Plugin::opt('price_display_variable_sale_enabled', 1),
+                'template' => (string) Plugin::opt('price_display_variable_sale_template', '{{ca_prefix}}{{value}}'),
             ],
             'selection'  => [
-                'enabled'  => (bool) Plugin::opt('price_display_variable_selection_enabled'),
-                'template' => (string) Plugin::opt('price_display_variable_selection_template', $placeholder),
+                'enabled'  => (bool) Plugin::opt('price_display_variable_selection_enabled', 1),
+                'template' => (string) Plugin::opt('price_display_variable_selection_template', '{{ca_prefix}}{{value}}'),
+            ],
+        ];
+    }
+
+    private function get_cart_templates(): array
+    {
+        return [
+            'item_price'    => [
+                'enabled'  => (bool) Plugin::opt('price_display_cart_item_price_enabled', 1),
+                'template' => (string) Plugin::opt('price_display_cart_item_price_template', '{{ca_prefix}}{{value}}'),
+            ],
+            'item_subtotal' => [
+                'enabled'  => (bool) Plugin::opt('price_display_cart_item_subtotal_enabled', 1),
+                'template' => (string) Plugin::opt('price_display_cart_item_subtotal_template', '{{ca_prefix}}{{value}}'),
+            ],
+            'subtotal'      => [
+                'enabled'  => (bool) Plugin::opt('price_display_cart_subtotal_enabled', 1),
+                'template' => (string) Plugin::opt('price_display_cart_subtotal_template', '{{ca_prefix}}{{value}}'),
+            ],
+            'total'         => [
+                'enabled'  => (bool) Plugin::opt('price_display_cart_total_enabled', 1),
+                'template' => (string) Plugin::opt('price_display_cart_total_template', '{{ca_prefix}}{{value}}'),
+            ],
+        ];
+    }
+
+    private function get_order_templates(): array
+    {
+        return [
+            'order_total' => [
+                'enabled'  => (bool) Plugin::opt('price_display_order_total_enabled', 1),
+                'template' => (string) Plugin::opt('price_display_order_total_template', '{{ca_prefix}}{{value}}'),
             ],
         ];
     }
@@ -242,6 +301,10 @@ class Price_Display_Templates
         }
 
         $placeholder = Field_Registry::TEMPLATE_PLACEHOLDER;
+        if (!isset($context['{{ca_prefix}}'])) {
+            $context['{{ca_prefix}}'] = '';
+        }
+
         $replacements = [$placeholder => $value];
 
         foreach ($context as $token => $replacement) {
@@ -273,7 +336,7 @@ class Price_Display_Templates
             return $html;
         }
 
-        $pattern = sprintf('/(<%1$s\b[^>]*>.*?<\\/%1$s>)/is', preg_quote($tag, '/'));
+        $pattern = sprintf('/(<%1$s\b[^>]*>.*?<\/%1$s>)/is', preg_quote($tag, '/'));
         if (!preg_match($pattern, $html, $matches, PREG_OFFSET_CAPTURE)) {
             return $html;
         }
@@ -285,27 +348,62 @@ class Price_Display_Templates
         return substr($html, 0, $offset) . $replacement . substr($html, $offset + strlen($segment));
     }
 
-    /**
-     * @return array<string, string>
-     */
     private function get_variable_placeholder_context(\WC_Product_Variable $product): array
     {
         $placeholders = [];
         $min_price = $product->get_variation_price('min', true);
         $max_price = $product->get_variation_price('max', true);
+        $should_prefix = Plugin::ca_prices_enabled() && $this->variable_has_estimated_variations($product);
+        $placeholders['{{ca_prefix}}'] = $this->format_prefix($this->get_line_prefix_option(), $should_prefix);
 
         if ($min_price !== '') {
             $formatted_min = $this->format_price_amount($min_price);
             $placeholders['{{minvalue}}'] = $formatted_min;
-            $placeholders['{{prefixed_minvalue}}'] = $this->maybe_prefix_amount($formatted_min, $product);
+            $placeholders['{{prefixed_minvalue}}'] = $this->maybe_prefix_amount($formatted_min, $placeholders['{{ca_prefix}}']);
         }
         if ($max_price !== '') {
             $formatted_max = $this->format_price_amount($max_price);
             $placeholders['{{maxvalue}}'] = $formatted_max;
-            $placeholders['{{prefixed_maxvalue}}'] = $this->maybe_prefix_amount($formatted_max, $product);
+            $placeholders['{{prefixed_maxvalue}}'] = $this->maybe_prefix_amount($formatted_max, $placeholders['{{ca_prefix}}']);
         }
 
         return $placeholders;
+    }
+
+    private function format_variable_range_html(\WC_Product_Variable $product): string
+    {
+        $min_price = (float) $product->get_variation_price('min', true);
+        $max_price = (float) $product->get_variation_price('max', true);
+        return $this->format_price_range_html($min_price, $max_price);
+    }
+
+    private function format_variable_sale_range_html(\WC_Product_Variable $product): string
+    {
+        $min_regular = (float) $product->get_variation_regular_price('min', true);
+        $max_regular = (float) $product->get_variation_regular_price('max', true);
+        $min_sale    = (float) $product->get_variation_price('min', true);
+        $max_sale    = (float) $product->get_variation_price('max', true);
+
+        $regular_html = $this->format_price_range_html($min_regular, $max_regular);
+        $sale_html    = $this->format_price_range_html($min_sale, $max_sale);
+
+        if ($regular_html === $sale_html) {
+            return $sale_html;
+        }
+
+        return wc_format_sale_price($regular_html, $sale_html);
+    }
+
+    private function format_price_range_html(float $min, float $max): string
+    {
+        $min_html = wc_price($min);
+        $max_html = wc_price($max);
+
+        if ($min === $max) {
+            return $min_html;
+        }
+
+        return wc_format_price_range($min_html, $max_html);
     }
 
     private function format_price_amount($amount): string
@@ -321,23 +419,132 @@ class Price_Display_Templates
         return (string) $amount;
     }
 
-    private function maybe_prefix_amount(string $formatted_amount, ?\WC_Product $product): string
+    private function build_product_context(?\WC_Product $product): array
     {
-        if (!$product || !Estimated::is_estimated_product($product)) {
-            return $formatted_amount;
-        }
-
-        $prefix = trim((string) Plugin::opt('price_prefix', 'Ca. '));
-        if ($prefix === '') {
-            return $formatted_amount;
-        }
-
-        $plain = trim(wp_strip_all_tags($formatted_amount));
-        if ($plain !== '' && strpos($plain, $prefix) === 0) {
-            return $formatted_amount;
-        }
-
-        return esc_html($prefix) . ' ' . $formatted_amount;
+        $should_prefix = $product && Plugin::ca_prices_enabled() && Estimated::is_estimated_product($product);
+        return ['{{ca_prefix}}' => $this->format_prefix($this->get_line_prefix_option(), $should_prefix)];
     }
-}
 
+    private function build_cart_context(?\WC_Cart $cart = null): array
+    {
+        $cart = $this->resolve_cart($cart);
+        $should_prefix = Plugin::ca_prices_enabled() && $cart && Estimated::cart_has_estimated($cart);
+        return ['{{ca_prefix}}' => $this->format_prefix($this->get_total_prefix_option(), $should_prefix)];
+    }
+
+    private function build_cart_totals_context(?\WC_Cart $cart = null): array
+    {
+        return $this->build_cart_context($cart);
+    }
+
+    private function build_order_context($order): array
+    {
+        $should_prefix = Plugin::ca_prices_enabled() && $this->order_has_estimated($order);
+        return ['{{ca_prefix}}' => $this->format_prefix($this->get_total_prefix_option(), $should_prefix)];
+    }
+
+    private function format_prefix(string $prefix, bool $include): string
+    {
+        $prefix = trim($prefix);
+        if (!$include || $prefix === '') {
+            return '';
+        }
+
+        return esc_html($prefix) . ' ';
+    }
+
+    private function maybe_prefix_amount(string $formatted, string $prefix_html): string
+    {
+        if ($prefix_html === '') {
+            return $formatted;
+        }
+
+        $plain_prefix = trim(wp_strip_all_tags($prefix_html));
+        $plain_value  = trim(wp_strip_all_tags($formatted));
+        if ($plain_prefix !== '' && $plain_value !== '' && strpos($plain_value, $plain_prefix) === 0) {
+            return $formatted;
+        }
+
+        return $prefix_html . $formatted;
+    }
+
+    private function is_estimated_product(?\WC_Product $product): bool
+    {
+        return $product instanceof \WC_Product && Estimated::is_estimated_product($product);
+    }
+
+    private function variable_has_estimated_variations(\WC_Product_Variable $product): bool
+    {
+        if (Estimated::is_estimated_product($product)) {
+            return true;
+        }
+
+        foreach ($product->get_children() as $child_id) {
+            $child = wc_get_product($child_id);
+            if ($child && Estimated::is_estimated_product($child)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function order_has_estimated($order): bool
+    {
+        if (!$order || !is_object($order) || !method_exists($order, 'get_items')) {
+            return false;
+        }
+
+        foreach ($order->get_items() as $item) {
+            if (!method_exists($item, 'get_product')) {
+                continue;
+            }
+            $product = $item->get_product();
+            if ($product && Estimated::is_estimated_product($product)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function get_line_prefix_option(): string
+    {
+        return (string) Plugin::opt('price_prefix', 'Ca. ');
+    }
+
+    private function get_total_prefix_option(): string
+    {
+        $total_prefix = Plugin::opt('total_prefix', null);
+        if (!is_string($total_prefix) || trim($total_prefix) === '') {
+            $total_prefix = $this->get_line_prefix_option();
+        }
+        return (string) $total_prefix;
+    }
+    private function resolve_cart($cart = null): ?\WC_Cart
+    {
+        if ($cart instanceof \WC_Cart) {
+            return $cart;
+        }
+
+        if (function_exists('WC')) {
+            $global_cart = WC()->cart;
+            if ($global_cart instanceof \WC_Cart) {
+                return $global_cart;
+            }
+        }
+
+        return null;
+    }
+
+    private function cart_has_estimated_products($cart = null): bool
+    {
+        $cart = $this->resolve_cart($cart);
+        if (!$cart) {
+            return false;
+        }
+
+        return Estimated::cart_has_estimated($cart);
+    }
+
+}

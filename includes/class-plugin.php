@@ -5,7 +5,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 use Lotzwoo\Admin\Settings_Page;
 use Lotzwoo\Admin\Product_Flag;
-use Lotzwoo\Frontend\Price_Prefix;
 
 class Plugin {
 	/** @var self */
@@ -37,7 +36,6 @@ class Plugin {
 		$files = [
 			'includes/admin/class-settings-page.php',
 			'includes/admin/class-product-flag.php',
-			'includes/frontend/class-price-prefix.php',
 		];
 		foreach ( $files as $rel ) {
 			$file = $base . $rel;
@@ -54,8 +52,6 @@ class Plugin {
 		}
 	}
 
-	private function init_frontend() : void {
-		new Price_Prefix();      // globales ???Ca. ???-Prefix in Frontend, Cart, Mails, Blocks-Bridge
-	}
+	private function init_frontend() : void {}
 }
 
