@@ -343,7 +343,7 @@ class Settings_Page
                     [
                         'option_key'            => 'price_display_single_regular_enabled',
                         'slug'                  => 'single_product_regular',
-                        'settings_label'        => __('Regulärer Preis (Streichpreis)', 'lotzapp-for-woocommerce'),
+                        'settings_label'        => __('Regulï¿½rer Preis (Streichpreis)', 'lotzapp-for-woocommerce'),
                         'settings_description'  => __('Greift, sobald woocommerce_product_get_regular_price & sale-Markup (<del>) im Template erscheinen. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_single_regular_template',
                     ],
@@ -358,13 +358,13 @@ class Settings_Page
             ],
             'variable-products' => [
                 'label'       => __('Variable Produkte', 'lotzapp-for-woocommerce'),
-                'description' => __('Standard: WooCommerce zeigt den Spannenpreis als „min – max“ an und aktualisiert nach Variantenauswahl den Preis im JSON. Platzhalter: {{value}}, {{ca_prefix}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
+                'description' => __('Standard: WooCommerce zeigt den Spannenpreis als ï¿½min ï¿½ maxï¿½ an und aktualisiert nach Variantenauswahl den Preis im JSON. Platzhalter: {{value}}, {{ca_prefix}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
                 'fields'      => [
                     [
                         'option_key'            => 'price_display_variable_range_enabled',
                         'slug'                  => 'variable_price_range',
                         'settings_label'        => __('Von-bis Preis Template', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Standard: Ausgabe wie „12,00 € – 18,00 €“ oberhalb des Buttons. Platzhalter: {{value}}, {{ca_prefix}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Standard: Ausgabe wie ï¿½12,00 ï¿½ ï¿½ 18,00 ï¿½ï¿½ oberhalb des Buttons. Platzhalter: {{value}}, {{ca_prefix}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_variable_range_template',
                     ],
                     [
@@ -378,14 +378,14 @@ class Settings_Page
                         'option_key'            => 'price_display_variable_selection_enabled',
                         'slug'                  => 'variable_price_selection',
                         'settings_label'        => __('Frontend Auswahl-Preis Template', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Standard: Variation-JavaScript nutzt price_html / display_price (z.B. „15,00 €“). Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Standard: Variation-JavaScript nutzt price_html / display_price (z.B. ï¿½15,00 ï¿½ï¿½). Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_variable_selection_template',
                     ],
                 ],
             ],
             'grouped-products' => [
                 'label'       => __('Gruppierte Produkte', 'lotzapp-for-woocommerce'),
-                'description' => __('Konfiguration für gruppierte Preisangaben. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
+                'description' => __('Konfiguration fï¿½r gruppierte Preisangaben. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
                 'fields'      => [
                     [
                         'option_key'            => 'price_display_grouped_enabled',
@@ -397,41 +397,35 @@ class Settings_Page
                 ],
             ],
             'cart' => [
-                'label'       => __('Warenkorb', 'lotzapp-for-woocommerce'),
-                'description' => __('Cart-Preis-Theming (Zeilensummen, Versand etc.). Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
+                'label'       => __('Warenkorb & Checkout', 'lotzapp-for-woocommerce'),
+                'description' => __('Preis-Templates fÃ¼r Warenkorb, Mini-Cart und Checkout (Zeilen- und Gesamtsummen). Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
                 'fields'      => [
                     [
                         'option_key'            => 'price_display_cart_item_price_enabled',
                         'slug'                  => 'cart_item_price',
-                        'settings_label'        => __('Artikelpreis im Warenkorb', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Wirkt auf woocommerce_cart_item_price (inkl. Mini-Cart).', 'lotzapp-for-woocommerce'),
+                        'settings_label'        => __('Line Item Gesamtpreis', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Rechte Spalte der Line-Item-Tabelle in Mini-Cart, Cart und Checkout.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_cart_item_price_template',
                     ],
                     [
                         'option_key'            => 'price_display_cart_item_subtotal_enabled',
                         'slug'                  => 'cart_item_subtotal',
-                        'settings_label'        => __('Artikelzwischensumme im Warenkorb', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Wirkt auf woocommerce_cart_item_subtotal.', 'lotzapp-for-woocommerce'),
+                        'settings_label'        => __('Line Items Single Preis', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Wirkt auf den Einzelpreis der Position in Mini-Cart, Cart und Checkout.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_cart_item_subtotal_template',
                     ],
-                ],
-            ],
-            'checkout' => [
-                'label'       => __('Checkout', 'lotzapp-for-woocommerce'),
-                'description' => __('Checkout- und Warenkorb-Zusammenfassung. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
-                'fields'      => [
                     [
                         'option_key'            => 'price_display_cart_subtotal_enabled',
                         'slug'                  => 'cart_subtotal',
-                        'settings_label'        => __('Zwischensumme (Cart / Checkout)', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Wirkt auf woocommerce_cart_totals_subtotal_html und woocommerce_cart_subtotal.', 'lotzapp-for-woocommerce'),
+                        'settings_label'        => __('Zwischensumme', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Wirkt auf Zwischensummen in Mini Cart und Cart.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_cart_subtotal_template',
                     ],
                     [
                         'option_key'            => 'price_display_cart_total_enabled',
                         'slug'                  => 'cart_total',
-                        'settings_label'        => __('Gesamtsumme (Cart / Checkout)', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Wirkt auf woocommerce_cart_totals_order_total_html.', 'lotzapp-for-woocommerce'),
+                        'settings_label'        => __('Gesamtsumme', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Wirkt auf Gesamtsummen in Cart und Checkout.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_cart_total_template',
                     ],
                 ],
@@ -449,12 +443,7 @@ class Settings_Page
                     ],
                 ],
             ],
-            'mini-cart' => [
-                'label'       => __('Mini-Cart', 'lotzapp-for-woocommerce'),
-                'description' => __('Unterstützung für Off-Canvas / Mini-Cart-Preise folgt.', 'lotzapp-for-woocommerce'),
-                'fields'      => [],
-            ],
-        ];
+            ];
 foreach ($price_display_groups as $slug => $group) {
             $fields = isset($group['fields']) ? (array) $group['fields'] : [];
             $description = isset($group['description']) ? (string) $group['description'] : '';
@@ -998,7 +987,7 @@ foreach ($price_display_groups as $slug => $group) {
             (string) $current_regular_template,
             [
                 'slug'           => 'price_display_single_regular_template',
-                'settings_label' => __('Regulärer Preis (Streichpreis)', 'lotzapp-for-woocommerce'),
+                'settings_label' => __('Regulï¿½rer Preis (Streichpreis)', 'lotzapp-for-woocommerce'),
             ],
             $basic_placeholders
         );
@@ -1090,7 +1079,7 @@ foreach ($price_display_groups as $slug => $group) {
             (string) $current_cart_item_subtotal_template,
             [
                 'slug'           => 'price_display_cart_item_subtotal_template',
-                'settings_label' => __('Artikelzwischensumme im Warenkorb', 'lotzapp-for-woocommerce'),
+                'settings_label' => __('Line Items Single Preis (Cart / Mini Cart / Checkout)', 'lotzapp-for-woocommerce'),
             ],
             $basic_placeholders
         );
@@ -1102,7 +1091,7 @@ foreach ($price_display_groups as $slug => $group) {
             (string) $current_cart_subtotal_template,
             [
                 'slug'           => 'price_display_cart_subtotal_template',
-                'settings_label' => __('Zwischensumme (Cart / Checkout)', 'lotzapp-for-woocommerce'),
+                'settings_label' => __('Zwischensumme (Cart / Mini Cart / Checkout)', 'lotzapp-for-woocommerce'),
             ],
             $basic_placeholders
         );

@@ -12,6 +12,42 @@ if (!defined('ABSPATH')) {
 
 class Price_Display_Templates
 {
+    /**
+     * Ensure Block-compatible placeholder is present and apply context.
+     */
+    public function render_block_product_template(string $template, \WC_Product $product): string
+    {
+        $block_template = $this->prepare_block_template($template);
+        return $this->apply_template($block_template, '<price/>', $this->build_product_context($product));
+    }
+
+    public function render_block_cart_item_template(string $template, array $cart_item): string
+    {
+        $product = isset($cart_item['data']) ? $cart_item['data'] : null;
+        if (!$product instanceof \WC_Product) {
+            return $this->prepare_block_template($template);
+        }
+        return $this->render_block_product_template($template, $product);
+    }
+
+    public function render_block_cart_total_template(string $template, ?\WC_Cart $cart = null): string
+    {
+        $block_template = $this->prepare_block_template($template);
+        return $this->apply_template($block_template, '<price/>', $this->build_cart_totals_context($cart));
+    }
+
+    public function render_block_cart_subtotal_template(string $template, ?\WC_Cart $cart = null): string
+    {
+        $block_template = $this->prepare_block_template($template);
+        return $this->apply_template($block_template, '<price/>', $this->build_cart_context($cart));
+    }
+
+    public function render_block_order_total_template(string $template, $order): string
+    {
+        $block_template = $this->prepare_block_template($template);
+        return $this->apply_template($block_template, '<price/>', $this->build_order_context($order));
+    }
+
     public function __construct()
     {
         add_filter('woocommerce_get_price_html', [$this, 'filter_simple_price_html'], 50, 2);
@@ -307,6 +343,24 @@ class Price_Display_Templates
                 'template' => (string) Plugin::opt('price_display_order_total_template', '{{ca_prefix}}{{value}}'),
             ],
         ];
+    }
+
+    private function prepare_block_template(string $template): string
+    {
+        $template = trim($template);
+        if ($template === '') {
+            $template = '{{value}}';
+        }
+
+        // Ensure placeholder exists.
+        if (strpos($template, Field_Registry::TEMPLATE_PLACEHOLDER) === false && strpos($template, '<price/>') === false) {
+            $template .= ' <price/>';
+        }
+
+        // Normalize to actual placeholder for rendering.
+        $template = str_replace('<price/>', Field_Registry::TEMPLATE_PLACEHOLDER, $template);
+
+        return $template;
     }
 
     private function apply_template(string $template, string $value, array $context = []): string
