@@ -72,6 +72,50 @@ class Menu_Planning_Service
         return $row ?: null;
     }
 
+    public function find_previous_entry(DateTimeInterface $before): ?array
+    {
+        if (!$this->table_exists()) {
+            return null;
+        }
+
+        global $wpdb;
+        $table   = $this->table_name();
+        $before_utc = $this->to_utc_string($before);
+
+        $query = $wpdb->prepare(
+            "SELECT * FROM {$table} WHERE scheduled_at <= %s AND status IN (%s, %s) ORDER BY scheduled_at DESC LIMIT 1",
+            $before_utc,
+            self::STATUS_PENDING,
+            self::STATUS_COMPLETED
+        );
+
+        /** @var array<string, mixed>|null $row */
+        $row = $wpdb->get_row($query, ARRAY_A); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        return $row ?: null;
+    }
+
+    public function find_next_entry(DateTimeInterface $after): ?array
+    {
+        if (!$this->table_exists()) {
+            return null;
+        }
+
+        global $wpdb;
+        $table   = $this->table_name();
+        $after_utc = $this->to_utc_string($after);
+
+        $query = $wpdb->prepare(
+            "SELECT * FROM {$table} WHERE scheduled_at > %s AND status IN (%s, %s) ORDER BY scheduled_at ASC LIMIT 1",
+            $after_utc,
+            self::STATUS_PENDING,
+            self::STATUS_COMPLETED
+        );
+
+        /** @var array<string, mixed>|null $row */
+        $row = $wpdb->get_row($query, ARRAY_A); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        return $row ?: null;
+    }
+
     /**
      * @return array<int, string> UTC timestamps.
      */

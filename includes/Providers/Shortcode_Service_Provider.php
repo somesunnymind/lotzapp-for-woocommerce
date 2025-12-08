@@ -9,6 +9,7 @@ use Lotzwoo\Services\Menu_Planning_Service;
 use Lotzwoo\Services\Product_Media_Service;
 use Lotzwoo\Shortcodes\Product_Image_Management;
 use Lotzwoo\Shortcodes\Menu_Planning;
+use Lotzwoo\Shortcodes\Menu_Date;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -30,11 +31,17 @@ class Shortcode_Service_Provider implements Service_Provider_Interface
                 $container->get(Menu_Planning_Assets::class)
             );
         });
+        $container->set(Menu_Date::class, static function (Container $container) {
+            return new Menu_Date(
+                $container->get(Menu_Planning_Service::class)
+            );
+        });
     }
 
     public function boot(Container $container): void
     {
         $container->get(Product_Image_Management::class)->register();
         $container->get(Menu_Planning::class)->register();
+        $container->get(Menu_Date::class)->register();
     }
 }

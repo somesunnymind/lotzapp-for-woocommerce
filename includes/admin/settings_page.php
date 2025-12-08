@@ -283,6 +283,19 @@ class Settings_Page
         );
 
         add_settings_field(
+            'menu_planning_shortcode',
+            __('Shortcode', 'lotzapp-for-woocommerce'),
+            function () {
+                $example = '[lotzmenu_date period="current" value="start" format="d.m.Y H:i"]';
+                echo '<p class="description"><code>' . esc_html($example) . '</code></p>';
+                echo '<p class="description">' . esc_html__('Klartext-Ausgabe des Start-, End- oder Restzeitpunkts fuer den aktuellen oder naechsten Menueplan.', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p class="description">' . esc_html__('Parameter: period current/next, value start/end/remaining, format nach PHP date().', 'lotzapp-for-woocommerce') . '</p>';
+            },
+            $menu_planning_page,
+            'lotzwoo_menu_planning_schedule'
+        );
+
+        add_settings_field(
             'menu_planning_show_backend_links',
             __('Produkt-Backend-Links', 'lotzapp-for-woocommerce'),
             function () {
@@ -343,7 +356,7 @@ class Settings_Page
                     [
                         'option_key'            => 'price_display_single_regular_enabled',
                         'slug'                  => 'single_product_regular',
-                        'settings_label'        => __('Regul�rer Preis (Streichpreis)', 'lotzapp-for-woocommerce'),
+                        'settings_label'        => __('Regulaerer Preis (Streichpreis)', 'lotzapp-for-woocommerce'),
                         'settings_description'  => __('Greift, sobald woocommerce_product_get_regular_price & sale-Markup (<del>) im Template erscheinen. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_single_regular_template',
                     ],
@@ -358,34 +371,34 @@ class Settings_Page
             ],
             'variable-products' => [
                 'label'       => __('Variable Produkte', 'lotzapp-for-woocommerce'),
-                'description' => __('Standard: WooCommerce zeigt den Spannenpreis als �min � max� an und aktualisiert nach Variantenauswahl den Preis im JSON. Platzhalter: {{value}}, {{ca_prefix}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
+                'description' => __('Standard: WooCommerce zeigt den Spannenpreis als von-bis Spanne an. Platzhalter: {{value}}, {{ca_prefix}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
                 'fields'      => [
                     [
                         'option_key'            => 'price_display_variable_range_enabled',
                         'slug'                  => 'variable_price_range',
                         'settings_label'        => __('Von-bis Preis Template', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Standard: Ausgabe wie �12,00 � � 18,00 �� oberhalb des Buttons. Platzhalter: {{value}}, {{ca_prefix}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Platzhalter: {{value}}, {{ca_prefix}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_variable_range_template',
                     ],
                     [
                         'option_key'            => 'price_display_variable_sale_enabled',
                         'slug'                  => 'variable_price_sale',
                         'settings_label'        => __('Sale Range Template', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Standard: <del>Regelpreis-Range</del> <ins>Aktuelle Range</ins> wenn Rabatt aktiv ist. Platzhalter: {{value}}, {{ca_prefix}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Platzhalter: {{value}}, {{ca_prefix}}, {{minvalue}}, {{maxvalue}}, {{prefixed_minvalue}}, {{prefixed_maxvalue}}.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_variable_sale_template',
                     ],
                     [
                         'option_key'            => 'price_display_variable_selection_enabled',
                         'slug'                  => 'variable_price_selection',
                         'settings_label'        => __('Frontend Auswahl-Preis Template', 'lotzapp-for-woocommerce'),
-                        'settings_description'  => __('Standard: Variation-JavaScript nutzt price_html / display_price (z.B. �15,00 ��). Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
+                        'settings_description'  => __('Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
                         'heading_option_key'    => 'price_display_variable_selection_template',
                     ],
                 ],
             ],
             'grouped-products' => [
                 'label'       => __('Gruppierte Produkte', 'lotzapp-for-woocommerce'),
-                'description' => __('Konfiguration f�r gruppierte Preisangaben. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
+                'description' => __('Konfiguration fuer gruppierte Preisangaben. Platzhalter: {{value}}, {{ca_prefix}}.', 'lotzapp-for-woocommerce'),
                 'fields'      => [
                     [
                         'option_key'            => 'price_display_grouped_enabled',
@@ -987,7 +1000,7 @@ foreach ($price_display_groups as $slug => $group) {
             (string) $current_regular_template,
             [
                 'slug'           => 'price_display_single_regular_template',
-                'settings_label' => __('Regul�rer Preis (Streichpreis)', 'lotzapp-for-woocommerce'),
+                'settings_label' => __('Regulaerer Preis (Streichpreis)', 'lotzapp-for-woocommerce'),
             ],
             $basic_placeholders
         );
