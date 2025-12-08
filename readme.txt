@@ -32,13 +32,3 @@ Trackinglinks erscheinen automatisch in der WooCommerce-E-Mail `customer_complet
 
 
 == Changelog ==
-= 0.1.2 =
-* Neues Emails-Tab mit Tracking-Template, Shortcode-Info und ERP-Hinweisen
-* ERP-Felder als Bestell-Metafelder registriert (REST + Admin-UI)
-* Tracking-Shortcode + Rechnungsanhang in customer_completed_order
-* Order-Backend-UI fuer Tracking/Rechnung sowie Test-Button fuer Mails
-* Bugfix: Metafeld-Verarbeitung fuer WC_Meta_Data Werte
-
-= 0.1.0 =
-* Initialer Skeleton-Release: Admin-Page, Optionen, Uninstall-Routine
-

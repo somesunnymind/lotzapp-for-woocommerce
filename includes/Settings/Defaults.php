@@ -43,6 +43,7 @@ class Defaults
             'price_display_custom_css' => '',
             'buffer_product_id'        => 0,
             'image_management_page_id' => 0,
+            'menu_planning_enabled'    => 1,
             'menu_planning_page_id'    => 0,
             'menu_planning_frequency'  => 'weekly',
             'menu_planning_monthday'   => 1,

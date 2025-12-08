@@ -289,7 +289,7 @@ class Settings_Page
                 $example = '[lotzmenu_date period="current" value="start" format="d.m.Y H:i"]';
                 echo '<p class="description"><code>' . esc_html($example) . '</code></p>';
                 echo '<p class="description">' . esc_html__('Klartext-Ausgabe des Start-, End- oder Restzeitpunkts fuer den aktuellen oder naechsten Menueplan.', 'lotzapp-for-woocommerce') . '</p>';
-                echo '<p class="description">' . esc_html__('Parameter: period current/next, value start/end/remaining, format nach PHP date().', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p class="description">' . esc_html__('Parameter: period current/next, value start/end/remaining, format nach PHP date(). remaining gibt die Restzeit in Worten zurueck und wird nicht von "format" beeinflusst (z. B. \"5 Stunden\").', 'lotzapp-for-woocommerce') . '</p>';
             },
             $menu_planning_page,
             'lotzwoo_menu_planning_schedule'
@@ -932,6 +932,7 @@ foreach ($price_display_groups as $slug => $group) {
         $options['total_prefix']         = isset($input['total_prefix']) ? sanitize_text_field($input['total_prefix']) : $options['price_prefix'];
         $options['buffer_product_id']    = isset($input['buffer_product_id']) ? absint($input['buffer_product_id']) : $options['buffer_product_id'];
         $options['image_management_page_id'] = isset($input['image_management_page_id']) ? absint($input['image_management_page_id']) : $options['image_management_page_id'];
+        $options['menu_planning_enabled']    = !empty($input['menu_planning_enabled']) ? 1 : 0;
         $options['menu_planning_page_id']    = isset($input['menu_planning_page_id']) ? absint($input['menu_planning_page_id']) : $options['menu_planning_page_id'];
         $options['menu_planning_frequency']  = isset($input['menu_planning_frequency']) ? $this->sanitize_menu_planning_frequency((string) $input['menu_planning_frequency']) : $this->sanitize_menu_planning_frequency((string) $options['menu_planning_frequency']);
         $options['menu_planning_monthday']   = isset($input['menu_planning_monthday']) ? $this->sanitize_menu_planning_monthday((int) $input['menu_planning_monthday']) : $this->sanitize_menu_planning_monthday((int) $options['menu_planning_monthday']);
@@ -1487,7 +1488,79 @@ foreach ($price_display_groups as $slug => $group) {
                 } elseif ($tab === 'product-images') {
                     do_settings_sections('lotzwoo-settings-product-images');
                 } elseif ($tab === 'menu-planning') {
+                    $menu_planning_enabled = (bool) Plugin::opt('menu_planning_enabled', 1);
+                    ob_start();
                     do_settings_sections('lotzwoo-settings-menu-planning');
+                    $menu_planning_html = (string) ob_get_clean();
+
+                    $heading_html = '';
+                    $intro_html   = '';
+
+                    if (preg_match('/^\s*<h2[^>]*>.*?<\/h2>/is', $menu_planning_html, $matches)) {
+                        $heading_html      = $matches[0];
+                        $menu_planning_html = (string) substr($menu_planning_html, strlen($matches[0]));
+                    }
+
+                    $menu_planning_html = ltrim($menu_planning_html);
+
+                    if (preg_match('/^\s*<p[^>]*>.*?<\/p>/is', $menu_planning_html, $matches)) {
+                        $intro_html        = $matches[0];
+                        $menu_planning_html = (string) substr($menu_planning_html, strlen($matches[0]));
+                    }
+
+                    $menu_planning_html = ltrim($menu_planning_html);
+
+                    if ($heading_html === '') {
+                        $heading_html = '<h2>' . esc_html__('Menueplanung', 'lotzapp-for-woocommerce') . '</h2>';
+                    }
+                    if ($intro_html === '') {
+                        $intro_html = '<p>' . esc_html__('Konfiguration der zentralen Menueplanung.', 'lotzapp-for-woocommerce') . '</p>';
+                    }
+
+                    echo $heading_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                    echo $intro_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                    ?>
+                    <fieldset class="lotzwoo-setting-toggle">
+                        <legend class="screen-reader-text"><?php esc_html_e('Menueplanung Optionen', 'lotzapp-for-woocommerce'); ?></legend>
+                        <label for="lotzwoo_menu_planning_enabled">
+                            <input type="checkbox" id="lotzwoo_menu_planning_enabled" name="lotzwoo_options[menu_planning_enabled]" value="1" <?php checked($menu_planning_enabled); ?> />
+                            <?php esc_html_e('Menueplanung aktivieren', 'lotzapp-for-woocommerce'); ?>
+                        </label>
+                        <p class="description"><?php esc_html_e('Schaltet alle Menueplanungs-Optionen dieses Plugins auf dieser Seite ein oder aus.', 'lotzapp-for-woocommerce'); ?></p>
+                    </fieldset>
+                    <div id="lotzwoo-menu-planning-settings" <?php echo $menu_planning_enabled ? '' : 'style="display:none;"'; ?>>
+                        <?php echo $menu_planning_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                    </div>
+                    <script>
+                    (function() {
+                        var checkbox = document.getElementById('lotzwoo_menu_planning_enabled');
+                        var settingsContainer = document.getElementById('lotzwoo-menu-planning-settings');
+                        if (!checkbox || !settingsContainer) {
+                            return;
+                        }
+                        var toggle = function () {
+                            var actionsContainer = document.getElementById('lotzwoo-menu-planning-actions');
+                            if (checkbox.checked) {
+                                settingsContainer.style.display = '';
+                                if (actionsContainer) {
+                                    actionsContainer.style.display = '';
+                                }
+                            } else {
+                                settingsContainer.style.display = 'none';
+                                if (actionsContainer) {
+                                    actionsContainer.style.display = 'none';
+                                }
+                            }
+                        };
+                        checkbox.addEventListener('change', toggle);
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', toggle);
+                        } else {
+                            toggle();
+                        }
+                    })();
+                    </script>
+                    <?php
                 } elseif ($tab === 'emails') {
                     do_settings_sections('lotzwoo-settings-emails');
                 }
@@ -1512,12 +1585,15 @@ foreach ($price_display_groups as $slug => $group) {
                     <?php submit_button(__('Bildverwaltung-Seite anlegen', 'lotzapp-for-woocommerce'), 'secondary'); ?>
                 </form>
             <?php elseif ($tab === 'menu-planning') : ?>
-                <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post">
-                    <input type="hidden" name="action" value="lotzwoo_create_menu_planning_page" />
-                    <?php wp_nonce_field('lotzwoo_create_menu_planning_page'); ?>
-                    <p><?php esc_html_e('Legt eine neue, private WordPress-Seite fuer die Menüplanung an und hinterlegt die ID automatisch. Als Seitentemplate "blank" verwenden (Inhaltsblock auf volle Breite einstellen).', 'lotzapp-for-woocommerce'); ?></p>
-                    <?php submit_button(__('Menüplanung-Seite anlegen', 'lotzapp-for-woocommerce'), 'secondary'); ?>
-                </form>
+                <?php $menu_planning_enabled = isset($menu_planning_enabled) ? $menu_planning_enabled : (bool) Plugin::opt('menu_planning_enabled', 1); ?>
+                <div id="lotzwoo-menu-planning-actions" <?php echo $menu_planning_enabled ? '' : 'style="display:none;"'; ?>>
+                    <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post">
+                        <input type="hidden" name="action" value="lotzwoo_create_menu_planning_page" />
+                        <?php wp_nonce_field('lotzwoo_create_menu_planning_page'); ?>
+                        <p><?php esc_html_e('Legt eine neue, private WordPress-Seite fuer die Menüplanung an und hinterlegt die ID automatisch. Als Seitentemplate "blank" verwenden (Inhaltsblock auf volle Breite einstellen).', 'lotzapp-for-woocommerce'); ?></p>
+                        <?php submit_button(__('Menüplanung-Seite anlegen', 'lotzapp-for-woocommerce'), 'secondary'); ?>
+                    </form>
+                </div>
             <?php elseif ($tab === 'emails') : ?>
                 <p><?php esc_html_e('Hinweis: Die ERP-Schnittstelle muss die genannten Metafelder fuellen, bevor das Versandabschluss-Email verschickt wird.', 'lotzapp-for-woocommerce'); ?></p>
                 <hr />
