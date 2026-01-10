@@ -5,6 +5,22 @@
         return;
     }
 
+    function deriveCategorySlug(tagSlug) {
+        if (!tagSlug) {
+            return '';
+        }
+        let slug = String(tagSlug);
+        const prefix = 'currentmenu_';
+        if (slug.indexOf(prefix) === 0) {
+            slug = slug.slice(prefix.length);
+        }
+        if (!slug) {
+            return '';
+        }
+        const parts = slug.split('_');
+        return parts[0] || '';
+    }
+
     class LotzwooMenuPlanningDnD {
         constructor() {
             this.instances = new Map();
@@ -33,6 +49,7 @@
                         instance: select.tomselect,
                         tagSlug: select.dataset.tagSlug || '',
                         tagName: select.dataset.tagName || '',
+                        categorySlug: select.dataset.categorySlug || '',
                     },
                 });
             });
@@ -48,6 +65,8 @@
             if (!slug) {
                 return;
             }
+            const categorySlug =
+                detail.categorySlug || detail.select.dataset.categorySlug || deriveCategorySlug(slug);
 
             const wrapper = detail.instance.wrapper;
             const control = detail.instance.control;
@@ -61,8 +80,10 @@
             }
             wrapper.dataset.lotzwooSelectId = id;
             wrapper.dataset.lotzwooColumn = slug;
+            wrapper.dataset.lotzwooCategory = categorySlug;
             control.dataset.lotzwooSelectId = id;
             control.dataset.lotzwooColumn = slug;
+            control.dataset.lotzwooCategory = categorySlug;
 
             this.disconnectObserver(id);
             this.instances.set(id, {
@@ -70,6 +91,7 @@
                 instance: detail.instance,
                 select: detail.select,
                 slug,
+                categoryKey: categorySlug,
                 wrapper,
                 control,
             });
@@ -130,6 +152,7 @@
                 entry,
                 value,
                 slug: entry.slug,
+                categoryKey: entry.categoryKey || '',
                 ghost: null,
             };
 
@@ -227,7 +250,9 @@
             if (this.isDisabled(target)) {
                 return false;
             }
-            if (target.slug !== state.slug) {
+            const sourceKey = state.categoryKey || state.slug;
+            const targetKey = target.categoryKey || target.slug;
+            if (sourceKey !== targetKey) {
                 return false;
             }
             if (target.id === state.entry.id) {

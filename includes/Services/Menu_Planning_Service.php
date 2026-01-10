@@ -259,6 +259,10 @@ class Menu_Planning_Service
             }
 
             $category_slug = substr($term->slug, strlen('currentmenu_'));
+            if ($category_slug !== '') {
+                $parts = explode('_', $category_slug);
+                $category_slug = $parts[0] ?? '';
+            }
             $category      = $category_slug !== '' ? get_term_by('slug', $category_slug, 'product_cat') : false;
 
             $tags[] = [

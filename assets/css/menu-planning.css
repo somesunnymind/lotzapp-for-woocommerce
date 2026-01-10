@@ -78,6 +78,10 @@
     margin-top: 1rem;
 }
 
+.lotzwoo-menu-planning__table {
+    min-height: calc(100% + 600px) !important;
+}
+
 .lotzwoo-menu-planning__table th,
 .lotzwoo-menu-planning__table td {
     vertical-align: top;
@@ -222,6 +226,8 @@
     color: #5c5f66;
     font-weight: 500;
     margin-bottom: 0.25rem;
+    border-top: 1px solid black;
+    padding-top: 10px;
 }
 
 .lotzwoo-menu-planning__ts-item-meta {

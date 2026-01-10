@@ -424,6 +424,7 @@
                     select.dataset.placeholder = config.i18n.addProduct || 'Produkt hinzufügen';
                     select.dataset.tagSlug = tag.slug || '';
                     select.dataset.tagName = tag.name || tag.slug || '';
+                    select.dataset.categorySlug = tag.category_slug || '';
                     products.forEach((product) => {
                         const option = document.createElement('option');
                         option.value = String(product.id);
@@ -658,6 +659,7 @@
                     instance,
                     tagSlug: tag && tag.slug ? tag.slug : select.dataset.tagSlug || '',
                     tagName: tag && tag.name ? tag.name : select.dataset.tagName || '',
+                    categorySlug: tag && tag.category_slug ? tag.category_slug : select.dataset.categorySlug || '',
                 };
                 document.dispatchEvent(new CustomEvent('lotzwoo:tomselect-init', { detail }));
             } catch (error) {

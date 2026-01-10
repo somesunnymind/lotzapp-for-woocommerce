@@ -4,7 +4,7 @@ Tags: woocommerce, pricing, estimated, cart, buffer
 Requires at least: 6.3
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.1.5
+Stable tag: 0.1.6
 WC requires at least: 7.0
 WC tested up to: 9.2
 License: GPLv2 or later
