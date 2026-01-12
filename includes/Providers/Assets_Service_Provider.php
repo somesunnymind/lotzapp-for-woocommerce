@@ -21,9 +21,11 @@ class Assets_Service_Provider implements Service_Provider_Interface
         $container->set(Menu_Planning::class, static function () {
             return new Menu_Planning();
         });
-        $container->set(Blocks_Price_Display::class, static function () {
-            return new Blocks_Price_Display();
-        });
+        if (class_exists(Blocks_Price_Display::class)) {
+            $container->set(Blocks_Price_Display::class, static function () {
+                return new Blocks_Price_Display();
+            });
+        }
     }
 
     public function boot(Container $container): void
@@ -31,6 +33,8 @@ class Assets_Service_Provider implements Service_Provider_Interface
         // Assets are enqueued on demand by the shortcode.
         $container->get(Image_Management::class);
         $container->get(Menu_Planning::class);
-        $container->get(Blocks_Price_Display::class);
+        if ($container->has(Blocks_Price_Display::class)) {
+            $container->get(Blocks_Price_Display::class);
+        }
     }
 }
