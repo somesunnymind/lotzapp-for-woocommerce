@@ -63,6 +63,11 @@ spl_autoload_register(static function ($class) {
     $ns_path = str_replace('\\', DIRECTORY_SEPARATOR, $relative) . '.php';
     $candidates[] = $base_dir . $ns_path;
     $candidates[] = $base_dir . strtolower($ns_path);
+    $ns_dir = dirname($ns_path);
+    $ns_file = basename($ns_path);
+    if ($ns_dir !== '.' && $ns_file !== '') {
+        $candidates[] = $base_dir . $ns_dir . DIRECTORY_SEPARATOR . strtolower($ns_file);
+    }
 
     $parts = explode('\\', $relative);
     $parts = array_map(static function ($part) {
@@ -113,4 +118,3 @@ add_action('plugins_loaded', static function () {
     // Boot the plugin.
     Lotzwoo\Plugin::instance();
 });
-
