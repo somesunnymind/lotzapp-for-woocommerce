@@ -366,7 +366,7 @@ class Field_Registry
                 'product_field_description'  => __('Kennzeichnet dieses Produkt als vegan.', 'lotzapp-for-woocommerce'),
                 'variation_field_label'      => __('Variante als vegan kennzeichnen', 'lotzapp-for-woocommerce'),
                 'variation_field_description'=> __('Kennzeichnet diese Variante als vegan.', 'lotzapp-for-woocommerce'),
-                'display_true_label'         => __('Ja', 'lotzapp-for-woocommerce'),
+                'display_true_label'         => __('Vegan', 'lotzapp-for-woocommerce'),
             ],
             'vegetarian_label' => [
                 'slug'                       => 'vegetarian_label',
@@ -382,7 +382,7 @@ class Field_Registry
                 'product_field_description'  => __('Kennzeichnet dieses Produkt als vegetarisch.', 'lotzapp-for-woocommerce'),
                 'variation_field_label'      => __('Variante als vegetarisch kennzeichnen', 'lotzapp-for-woocommerce'),
                 'variation_field_description'=> __('Kennzeichnet diese Variante als vegetarisch.', 'lotzapp-for-woocommerce'),
-                'display_true_label'         => __('Ja', 'lotzapp-for-woocommerce'),
+                'display_true_label'         => __('Vegetarisch', 'lotzapp-for-woocommerce'),
             ],
             'glutenfree_label' => [
                 'slug'                       => 'glutenfree_label',
@@ -398,7 +398,7 @@ class Field_Registry
                 'product_field_description'  => __('Kennzeichnet dieses Produkt als glutenfrei.', 'lotzapp-for-woocommerce'),
                 'variation_field_label'      => __('Variante als glutenfrei kennzeichnen', 'lotzapp-for-woocommerce'),
                 'variation_field_description'=> __('Kennzeichnet diese Variante als glutenfrei.', 'lotzapp-for-woocommerce'),
-                'display_true_label'         => __('Ja', 'lotzapp-for-woocommerce'),
+                'display_true_label'         => __('Glutenfrei', 'lotzapp-for-woocommerce'),
             ],
             'lactosefree_label' => [
                 'slug'                       => 'lactosefree_label',
@@ -414,7 +414,7 @@ class Field_Registry
                 'product_field_description'  => __('Kennzeichnet dieses Produkt als laktosefrei.', 'lotzapp-for-woocommerce'),
                 'variation_field_label'      => __('Variante als laktosefrei kennzeichnen', 'lotzapp-for-woocommerce'),
                 'variation_field_description'=> __('Kennzeichnet diese Variante als laktosefrei.', 'lotzapp-for-woocommerce'),
-                'display_true_label'         => __('Ja', 'lotzapp-for-woocommerce'),
+                'display_true_label'         => __('Laktosefrei', 'lotzapp-for-woocommerce'),
             ],
             'organic_label' => [
                 'slug'                       => 'organic_label',
@@ -430,7 +430,7 @@ class Field_Registry
                 'product_field_description'  => __('Kennzeichnet dieses Produkt als Bio.', 'lotzapp-for-woocommerce'),
                 'variation_field_label'      => __('Variante als Bio kennzeichnen', 'lotzapp-for-woocommerce'),
                 'variation_field_description'=> __('Kennzeichnet diese Variante als Bio.', 'lotzapp-for-woocommerce'),
-                'display_true_label'         => __('Ja', 'lotzapp-for-woocommerce'),
+                'display_true_label'         => __('Bio', 'lotzapp-for-woocommerce'),
             ],
             'organic_cert_number' => [
                 'slug'                       => 'organic_cert_number',

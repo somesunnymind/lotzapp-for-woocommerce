@@ -4,6 +4,7 @@ namespace Lotzwoo\Admin;
 
 use Lotzwoo\Plugin;
 use Lotzwoo\Field_Registry;
+use Lotzwoo\Services\Delivery_Time_Service;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -55,6 +56,7 @@ class Settings_Page
         $images_page         = 'lotzwoo-settings-product-images';
         $menu_planning_page  = 'lotzwoo-settings-menu-planning';
         $emails_page         = 'lotzwoo-settings-emails';
+        $delivery_times_page = 'lotzwoo-settings-delivery-times';
 
         add_settings_section(
             'lotzwoo_general',
@@ -63,6 +65,23 @@ class Settings_Page
                 echo '<p>' . esc_html__('LotzApp-spezifische WooCommerce-Felder sperren.', 'lotzapp-for-woocommerce') . '</p>';
             },
             $general_page
+        );
+
+        add_settings_section(
+            'lotzwoo_delivery_times',
+            __('Lieferzeit', 'lotzapp-for-woocommerce'),
+            function () {
+                echo '<p>' . esc_html__('Lieferzeiten fuer Produktangaben verwalten. Ausgabe im Produkt-Template mit Shortcode [lotzwoo_delivery_time] (optional mit fixer Produkt-ID: product_id=123)', 'lotzapp-for-woocommerce') . '</p>';
+            },
+            $delivery_times_page
+        );
+
+        add_settings_field(
+            'delivery_times',
+            __('Lieferzeiten anlegen', 'lotzapp-for-woocommerce'),
+            [$this, 'render_delivery_times_field'],
+            $delivery_times_page,
+            'lotzwoo_delivery_times'
         );
 
         add_settings_field(
@@ -973,6 +992,12 @@ foreach ($price_display_groups as $slug => $group) {
             ]
         );
 
+        $current_delivery_times = Plugin::opt('delivery_times', []);
+        $options['delivery_times'] = $this->sanitize_delivery_times(
+            $input['delivery_times'] ?? $current_delivery_times,
+            $input['delivery_times_new'] ?? []
+        );
+
         foreach (Field_Registry::all() as $field) {
             $options[$field['option_key']] = !empty($input[$field['option_key']]) ? 1 : 0;
             if (!empty($field['heading_option_key'])) {
@@ -1219,6 +1244,159 @@ foreach ($price_display_groups as $slug => $group) {
     }
 
     /**
+     * @param mixed $raw_current
+     * @param mixed $raw_new
+     * @return array<int, array<string, mixed>>
+     */
+    private function sanitize_delivery_times($raw_current, $raw_new): array
+    {
+        $service = new Delivery_Time_Service();
+        $normalized = [];
+        $seen = [];
+
+        $current = is_array($raw_current) ? $raw_current : [];
+        foreach ($current as $maybe_id => $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+
+            if (!empty($entry['delete'])) {
+                continue;
+            }
+
+            $id = isset($entry['id']) ? sanitize_key((string) $entry['id']) : sanitize_key((string) $maybe_id);
+            if ($id === '') {
+                $id = $service->create_id();
+            }
+
+            $type = isset($entry['type']) ? (string) $entry['type'] : '';
+
+            if ($type === Delivery_Time_Service::TYPE_TEXT) {
+                $text = isset($entry['text']) ? sanitize_text_field((string) $entry['text']) : '';
+                if ($text === '') {
+                    continue;
+                }
+                $normalized[] = [
+                    'id'   => $id,
+                    'type' => $type,
+                    'text' => $text,
+                ];
+                $seen[$id] = true;
+                continue;
+            }
+
+            if ($type === Delivery_Time_Service::TYPE_MENU_DAYS) {
+                $days = isset($entry['days']) ? (int) $entry['days'] : 0;
+                $days = max(0, $days);
+                $normalized[] = [
+                    'id'   => $id,
+                    'type' => $type,
+                    'days' => $days,
+                ];
+                $seen[$id] = true;
+            }
+        }
+
+        $new = is_array($raw_new) ? $raw_new : [];
+
+        $new_text = isset($new['text']) ? sanitize_text_field((string) $new['text']) : '';
+        if ($new_text !== '') {
+            $id = $service->create_id();
+            if (!isset($seen[$id])) {
+                $normalized[] = [
+                    'id'   => $id,
+                    'type' => Delivery_Time_Service::TYPE_TEXT,
+                    'text' => $new_text,
+                ];
+                $seen[$id] = true;
+            }
+        }
+
+        $raw_new_days = $new['days'] ?? '';
+        if ($raw_new_days !== '' && is_numeric($raw_new_days)) {
+            $days = max(0, (int) $raw_new_days);
+            $id = $service->create_id();
+            if (!isset($seen[$id])) {
+                $normalized[] = [
+                    'id'   => $id,
+                    'type' => Delivery_Time_Service::TYPE_MENU_DAYS,
+                    'days' => $days,
+                ];
+            }
+        }
+
+        return $normalized;
+    }
+
+    public function render_delivery_times_field(): void
+    {
+        $service = new Delivery_Time_Service();
+        $entries = $service->get_delivery_times();
+
+        echo '<p class="description">' . esc_html__('Lege Lieferzeiten als Klartext oder als Berechnung ab dem naechsten Menueplanwechsel an.', 'lotzapp-for-woocommerce') . '</p>';
+
+        echo '<table class="widefat striped">';
+        echo '<thead><tr>';
+        echo '<th>' . esc_html__('Typ', 'lotzapp-for-woocommerce') . '</th>';
+        echo '<th>' . esc_html__('Wert', 'lotzapp-for-woocommerce') . '</th>';
+        echo '<th>' . esc_html__('Ausgabe', 'lotzapp-for-woocommerce') . '</th>';
+        echo '<th>' . esc_html__('Entfernen', 'lotzapp-for-woocommerce') . '</th>';
+        echo '</tr></thead>';
+        echo '<tbody>';
+
+        if (empty($entries)) {
+            echo '<tr><td colspan="4">' . esc_html__('Noch keine Lieferzeiten definiert.', 'lotzapp-for-woocommerce') . '</td></tr>';
+        } else {
+            foreach ($entries as $entry) {
+                $id   = isset($entry['id']) ? (string) $entry['id'] : '';
+                $type = isset($entry['type']) ? (string) $entry['type'] : '';
+                if ($id === '') {
+                    continue;
+                }
+                $base_name = 'lotzwoo_options[delivery_times][' . esc_attr($id) . ']';
+                $type_label = $type === Delivery_Time_Service::TYPE_MENU_DAYS
+                    ? __('Menueplanwechsel + Tage', 'lotzapp-for-woocommerce')
+                    : __('Text', 'lotzapp-for-woocommerce');
+
+                echo '<tr>';
+                echo '<td>' . esc_html($type_label) . '</td>';
+                echo '<td>';
+                echo '<input type="hidden" name="' . $base_name . '[id]" value="' . esc_attr($id) . '" />';
+                echo '<input type="hidden" name="' . $base_name . '[type]" value="' . esc_attr($type) . '" />';
+                if ($type === Delivery_Time_Service::TYPE_MENU_DAYS) {
+                    $days = isset($entry['days']) ? (int) $entry['days'] : 0;
+                    echo '<input type="number" min="0" step="1" class="small-text" name="' . $base_name . '[days]" value="' . esc_attr((string) $days) . '" />';
+                } else {
+                    $text = isset($entry['text']) ? (string) $entry['text'] : '';
+                    echo '<input type="text" class="regular-text" name="' . $base_name . '[text]" value="' . esc_attr($text) . '" />';
+                }
+                echo '</td>';
+                echo '<td>' . esc_html($service->format_output($entry)) . '</td>';
+                echo '<td><label><input type="checkbox" name="' . $base_name . '[delete]" value="1" /> ' . esc_html__('loeschen', 'lotzapp-for-woocommerce') . '</label></td>';
+                echo '</tr>';
+            }
+        }
+
+        echo '</tbody>';
+        echo '</table>';
+
+        echo '<h4>' . esc_html__('Neue Lieferzeit anlegen', 'lotzapp-for-woocommerce') . '</h4>';
+        echo '<p class="description">' . esc_html__('Textlieferzeit oder automatisch berechnete Lieferzeit eingeben und speichern. Auswahl im WooCommerce Produktseiten-Backend unter "Versand".', 'lotzapp-for-woocommerce') . '</p></td>';
+        echo '<table class="form-table" role="presentation">';
+        echo '<tr>';
+        echo '<th scope="row"><label for="lotzwoo_delivery_time_text">' . esc_html__('Textlieferzeit', 'lotzapp-for-woocommerce') . '</label></th>';
+        echo '<td><input id="lotzwoo_delivery_time_text" type="text" class="regular-text" name="lotzwoo_options[delivery_times_new][text]" placeholder="' . esc_attr__('z. B. 3-4 Werktage', 'lotzapp-for-woocommerce') . '" />';
+        echo '<p class="description">' . esc_html__('Wird als Klartext ausgegeben.', 'lotzapp-for-woocommerce') . '</p></td>';
+        echo '</tr>';
+        echo '<tr>';
+        echo '<th scope="row"><label for="lotzwoo_delivery_time_days">' . esc_html__('Tage nach Menueplanwechsel', 'lotzapp-for-woocommerce') . '</label></th>';
+        echo '<td><input id="lotzwoo_delivery_time_days" type="number" min="0" step="1" class="small-text" name="lotzwoo_options[delivery_times_new][days]" />';
+        echo '<p class="description">' . esc_html__('Berechnet das Datum ab dem naechsten Menueplanwechsel (Tab Menueplanung).', 'lotzapp-for-woocommerce') . '</p></td>';
+        echo '</tr>';
+        echo '</table>';
+    }
+
+    /**
      * @param array<string, mixed> $field
      */
     private function sanitize_field_template(string $raw_value, string $existing_value, array $field, array $allowed_placeholders = [Field_Registry::TEMPLATE_PLACEHOLDER]): string
@@ -1350,12 +1528,13 @@ foreach ($price_display_groups as $slug => $group) {
     public function render(): void
     {
         $tab  = isset($_GET['tab']) ? sanitize_key((string) $_GET['tab']) : 'general';
-        $tab  = in_array($tab, ['general', 'ca-prices', 'product-images', 'menu-planning', 'emails'], true) ? $tab : 'general';
+        $tab  = in_array($tab, ['general', 'ca-prices', 'product-images', 'menu-planning', 'delivery-times', 'emails'], true) ? $tab : 'general';
         $tabs = [
             'general'   => __('Allgemein', 'lotzapp-for-woocommerce'),
             'ca-prices' => __('Preise', 'lotzapp-for-woocommerce'),
             'product-images' => __('Produktbilder', 'lotzapp-for-woocommerce'),
-            'menu-planning'  => __('Menüplanung', 'lotzapp-for-woocommerce'),
+            'menu-planning'  => __('Menueplanung', 'lotzapp-for-woocommerce'),
+            'delivery-times' => __('Lieferzeit', 'lotzapp-for-woocommerce'),
             'emails'    => __('Emails', 'lotzapp-for-woocommerce'),
         ];
         $base_url = menu_page_url('lotzwoo-settings', false);
@@ -1561,6 +1740,8 @@ foreach ($price_display_groups as $slug => $group) {
                     })();
                     </script>
                     <?php
+                } elseif ($tab === 'delivery-times') {
+                    do_settings_sections('lotzwoo-settings-delivery-times');
                 } elseif ($tab === 'emails') {
                     do_settings_sections('lotzwoo-settings-emails');
                 }
@@ -1902,6 +2083,7 @@ foreach ($price_display_groups as $slug => $group) {
         return (int) $post_id;
     }
 }
+
 
 
 

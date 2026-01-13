@@ -12,3 +12,7 @@
 }
 
 
+/*TABLE WIDEFAT*/
+table.widefat th {
+    padding-left: 10px;
+}

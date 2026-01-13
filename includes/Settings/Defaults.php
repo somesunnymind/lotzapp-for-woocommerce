@@ -50,6 +50,7 @@ class Defaults
             'menu_planning_weekday'    => 'monday',
             'menu_planning_time'       => '07:00',
             'menu_planning_show_backend_links' => 0,
+            'delivery_times'           => [],
             'locked_fields'            => [],
             'meta_key'                 => '_ca_is_estimated',
             'show_range_note'          => 1,

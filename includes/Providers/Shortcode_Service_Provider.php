@@ -7,9 +7,11 @@ use Lotzwoo\Assets\Menu_Planning as Menu_Planning_Assets;
 use Lotzwoo\Container;
 use Lotzwoo\Services\Menu_Planning_Service;
 use Lotzwoo\Services\Product_Media_Service;
+use Lotzwoo\Services\Delivery_Time_Service;
 use Lotzwoo\Shortcodes\Product_Image_Management;
 use Lotzwoo\Shortcodes\Menu_Planning;
 use Lotzwoo\Shortcodes\Menu_Date;
+use Lotzwoo\Shortcodes\Delivery_Time;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -36,6 +38,14 @@ class Shortcode_Service_Provider implements Service_Provider_Interface
                 $container->get(Menu_Planning_Service::class)
             );
         });
+        $container->set(Delivery_Time_Service::class, static function () {
+            return new Delivery_Time_Service();
+        });
+        $container->set(Delivery_Time::class, static function (Container $container) {
+            return new Delivery_Time(
+                $container->get(Delivery_Time_Service::class)
+            );
+        });
     }
 
     public function boot(Container $container): void
@@ -43,5 +53,6 @@ class Shortcode_Service_Provider implements Service_Provider_Interface
         $container->get(Product_Image_Management::class)->register();
         $container->get(Menu_Planning::class)->register();
         $container->get(Menu_Date::class)->register();
+        $container->get(Delivery_Time::class)->register();
     }
 }
