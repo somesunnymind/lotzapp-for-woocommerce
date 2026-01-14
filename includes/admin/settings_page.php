@@ -57,6 +57,7 @@ class Settings_Page
         $menu_planning_page  = 'lotzwoo-settings-menu-planning';
         $emails_page         = 'lotzwoo-settings-emails';
         $delivery_times_page = 'lotzwoo-settings-delivery-times';
+        $deposit_page        = 'lotzwoo-settings-deposit';
 
         add_settings_section(
             'lotzwoo_general',
@@ -82,6 +83,15 @@ class Settings_Page
             [$this, 'render_delivery_times_field'],
             $delivery_times_page,
             'lotzwoo_delivery_times'
+        );
+
+        add_settings_section(
+            'lotzwoo_deposit',
+            __('Pfand', 'lotzapp-for-woocommerce'),
+            function () {
+                echo '<p>' . esc_html__('Pfand-Optionen fuer Produkte und Varianten konfigurieren.', 'lotzapp-for-woocommerce') . '</p>';
+            },
+            $deposit_page
         );
 
         add_settings_field(
@@ -319,6 +329,7 @@ class Settings_Page
             __('Produkt-Backend-Links', 'lotzapp-for-woocommerce'),
             function () {
                 $checked = Plugin::opt('menu_planning_show_backend_links') ? 'checked' : '';
+                echo '<input type="hidden" name="lotzwoo_options[menu_planning_show_backend_links]" value="0" />';
                 echo '<label><input type="checkbox" name="lotzwoo_options[menu_planning_show_backend_links]" value="1" ' . $checked . ' /> ';
                 echo esc_html__('Bearbeiten-Links ins WooCommerce Produkt-Backend anzeigen', 'lotzapp-for-woocommerce') . '</label>';
                 echo '<p class="description">' . esc_html__('Blendet in der Menueplanung einen Bearbeiten-Link unter jedem ausgewaehlten Produkt ein.', 'lotzapp-for-woocommerce') . '</p>';
@@ -344,6 +355,7 @@ class Settings_Page
             __('Min/Max-Hinweis anzeigen', 'lotzapp-for-woocommerce'),
             function () {
                 $checked = Plugin::opt('show_range_note') ? 'checked' : '';
+                echo '<input type="hidden" name="lotzwoo_options[show_range_note]" value="0" />';
                 echo '<label><input type="checkbox" name="lotzwoo_options[show_range_note]" value="1" ' . $checked . ' /> ';
                 echo esc_html__('Aktiviere die Anzeige des Min/Max-Hinweises im Checkout.', 'lotzapp-for-woocommerce') . '</label>';
             },
@@ -517,6 +529,7 @@ foreach ($price_display_groups as $slug => $group) {
                 $value            = (string) Plugin::opt('emails_tracking_template', $this->default_email_tracking_template());
                 $placeholder      = Field_Registry::TEMPLATE_PLACEHOLDER;
                 $checked          = $tracking_enabled ? 'checked' : '';
+                echo '<input type="hidden" name="lotzwoo_options[emails_tracking_enabled]" value="0" />';
                 echo '<label><input type="checkbox" id="lotzwoo_emails_tracking_enabled" name="lotzwoo_options[emails_tracking_enabled]" value="1" ' . $checked . ' /> ';
                 echo esc_html__('Tracking-Link Block in WooCommerce-E-Mails anzeigen', 'lotzapp-for-woocommerce') . '</label>';
                 echo '<p class="description">' . esc_html__('Aktiviert den Shortcode-Block innerhalb von customer_completed_order.', 'lotzapp-for-woocommerce') . '</p>';
@@ -556,6 +569,7 @@ foreach ($price_display_groups as $slug => $group) {
             function () {
                 $enabled = (bool) Plugin::opt('emails_invoice_enabled', 1);
                 $checked = $enabled ? 'checked' : '';
+                echo '<input type="hidden" name="lotzwoo_options[emails_invoice_enabled]" value="0" />';
                 echo '<label><input type="checkbox" name="lotzwoo_options[emails_invoice_enabled]" value="1" ' . $checked . ' /> ';
                 echo esc_html__('Rechnung aus LotzApp als Anhang mitsenden, wenn eine URL vorhanden ist.', 'lotzapp-for-woocommerce') . '</label>';
                 echo '<p class="description">' . esc_html__('Die Datei wird lokal angehängt oder bei externen URLs heruntergeladen und beigefügt.', 'lotzapp-for-woocommerce') . '</p>';
@@ -655,6 +669,7 @@ foreach ($price_display_groups as $slug => $group) {
         $target_id  = 'lotzwoo-field-details-' . $slug;
 
         echo '<div class="lotzwoo-field-toggle" data-lotzwoo-field="' . esc_attr($slug) . '">';
+        echo '<input type="hidden" name="lotzwoo_options[' . esc_attr($option_key) . ']" value="0" />';
         echo '<label class="lotzwoo-field-toggle__main">';
         echo '<input type="checkbox" name="lotzwoo_options[' . esc_attr($option_key) . ']" value="1" ' . $checked . ' data-lotzwoo-toggle="1" data-target="' . esc_attr($target_id) . '" />';
         echo '<span class="lotzwoo-field-toggle__texts">';
@@ -941,72 +956,140 @@ foreach ($price_display_groups as $slug => $group) {
     public function sanitize($input): array
     {
         $input   = is_array($input) ? $input : [];
-        $current = Plugin::opt('meta_key', '_ca_is_estimated');
+        $stored  = get_option('lotzwoo_options', []);
+        $stored  = is_array($stored) ? $stored : [];
+        $options = array_merge(Plugin::defaults(), $stored);
 
-        $options = Plugin::defaults();
-        $options['meta_key'] = $current;
+        $options['meta_key'] = Plugin::opt('meta_key', $options['meta_key'] ?? '_ca_is_estimated');
 
-        $options['ca_prices_enabled']    = !empty($input['ca_prices_enabled']) ? 1 : 0;
-        $options['price_prefix']         = isset($input['price_prefix']) ? sanitize_text_field($input['price_prefix']) : $options['price_prefix'];
-        $options['total_prefix']         = isset($input['total_prefix']) ? sanitize_text_field($input['total_prefix']) : $options['price_prefix'];
-        $options['buffer_product_id']    = isset($input['buffer_product_id']) ? absint($input['buffer_product_id']) : $options['buffer_product_id'];
-        $options['image_management_page_id'] = isset($input['image_management_page_id']) ? absint($input['image_management_page_id']) : $options['image_management_page_id'];
-        $options['menu_planning_enabled']    = !empty($input['menu_planning_enabled']) ? 1 : 0;
-        $options['menu_planning_page_id']    = isset($input['menu_planning_page_id']) ? absint($input['menu_planning_page_id']) : $options['menu_planning_page_id'];
-        $options['menu_planning_frequency']  = isset($input['menu_planning_frequency']) ? $this->sanitize_menu_planning_frequency((string) $input['menu_planning_frequency']) : $this->sanitize_menu_planning_frequency((string) $options['menu_planning_frequency']);
-        $options['menu_planning_monthday']   = isset($input['menu_planning_monthday']) ? $this->sanitize_menu_planning_monthday((int) $input['menu_planning_monthday']) : $this->sanitize_menu_planning_monthday((int) $options['menu_planning_monthday']);
-        $options['menu_planning_weekday']    = isset($input['menu_planning_weekday']) ? $this->sanitize_menu_planning_weekday((string) $input['menu_planning_weekday']) : $this->sanitize_menu_planning_weekday((string) $options['menu_planning_weekday']);
-        $options['menu_planning_time']       = isset($input['menu_planning_time']) ? $this->sanitize_menu_planning_time((string) $input['menu_planning_time']) : $this->sanitize_menu_planning_time((string) $options['menu_planning_time']);
-        $options['menu_planning_show_backend_links'] = !empty($input['menu_planning_show_backend_links']) ? 1 : 0;
-        $options['show_range_note']      = !empty($input['show_range_note']) ? 1 : 0;
-        $options['price_display_single_enabled'] = !empty($input['price_display_single_enabled']) ? 1 : 0;
-        $options['price_display_single_regular_enabled'] = !empty($input['price_display_single_regular_enabled']) ? 1 : 0;
-        $options['price_display_single_sale_enabled'] = !empty($input['price_display_single_sale_enabled']) ? 1 : 0;
-        $options['price_display_variable_range_enabled'] = !empty($input['price_display_variable_range_enabled']) ? 1 : 0;
-        $options['price_display_variable_sale_enabled'] = !empty($input['price_display_variable_sale_enabled']) ? 1 : 0;
-        $options['price_display_variable_selection_enabled'] = !empty($input['price_display_variable_selection_enabled']) ? 1 : 0;
-        $options['price_display_grouped_enabled'] = !empty($input['price_display_grouped_enabled']) ? 1 : 0;
-        $options['price_display_cart_item_price_enabled'] = !empty($input['price_display_cart_item_price_enabled']) ? 1 : 0;
-        $options['price_display_cart_item_subtotal_enabled'] = !empty($input['price_display_cart_item_subtotal_enabled']) ? 1 : 0;
-        $options['price_display_cart_subtotal_enabled'] = !empty($input['price_display_cart_subtotal_enabled']) ? 1 : 0;
-        $options['price_display_cart_total_enabled'] = !empty($input['price_display_cart_total_enabled']) ? 1 : 0;
-        $options['price_display_order_total_enabled'] = !empty($input['price_display_order_total_enabled']) ? 1 : 0;
-        $options['price_display_custom_css'] = isset($input['price_display_custom_css'])
-            ? $this->sanitize_price_display_custom_css((string) $input['price_display_custom_css'])
-            : $this->sanitize_price_display_custom_css((string) Plugin::opt('price_display_custom_css', $options['price_display_custom_css']));
-
-        $options['emails_tracking_enabled'] = !empty($input['emails_tracking_enabled']) ? 1 : 0;
-        $options['emails_invoice_enabled']  = !empty($input['emails_invoice_enabled']) ? 1 : 0;
-        $default_email_template          = $this->default_email_tracking_template();
-        $current_email_template          = Plugin::opt('emails_tracking_template', $default_email_template);
-        $raw_email_template              = isset($input['emails_tracking_template']) ? (string) $input['emails_tracking_template'] : (string) $current_email_template;
-        if (trim($raw_email_template) === '') {
-            $raw_email_template = $default_email_template;
+        if (array_key_exists('ca_prices_enabled', $input)) {
+            $options['ca_prices_enabled'] = !empty($input['ca_prices_enabled']) ? 1 : 0;
         }
-        $options['emails_tracking_template'] = $this->sanitize_field_template(
-            $raw_email_template,
-            (string) $current_email_template,
-            [
-                'slug'           => 'emails_tracking_template',
-                'settings_label' => __('Tracking-Link Ausgabe', 'lotzapp-for-woocommerce'),
-            ]
-        );
+        if (array_key_exists('price_prefix', $input)) {
+            $options['price_prefix'] = sanitize_text_field((string) $input['price_prefix']);
+        }
+        if (array_key_exists('total_prefix', $input)) {
+            $options['total_prefix'] = sanitize_text_field((string) $input['total_prefix']);
+        }
+        if (array_key_exists('buffer_product_id', $input)) {
+            $options['buffer_product_id'] = absint($input['buffer_product_id']);
+        }
+        if (array_key_exists('image_management_page_id', $input)) {
+            $options['image_management_page_id'] = absint($input['image_management_page_id']);
+        }
+        if (array_key_exists('menu_planning_enabled', $input)) {
+            $options['menu_planning_enabled'] = !empty($input['menu_planning_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('menu_planning_page_id', $input)) {
+            $options['menu_planning_page_id'] = absint($input['menu_planning_page_id']);
+        }
+        if (array_key_exists('menu_planning_frequency', $input)) {
+            $options['menu_planning_frequency'] = $this->sanitize_menu_planning_frequency((string) $input['menu_planning_frequency']);
+        }
+        if (array_key_exists('menu_planning_monthday', $input)) {
+            $options['menu_planning_monthday'] = $this->sanitize_menu_planning_monthday((int) $input['menu_planning_monthday']);
+        }
+        if (array_key_exists('menu_planning_weekday', $input)) {
+            $options['menu_planning_weekday'] = $this->sanitize_menu_planning_weekday((string) $input['menu_planning_weekday']);
+        }
+        if (array_key_exists('menu_planning_time', $input)) {
+            $options['menu_planning_time'] = $this->sanitize_menu_planning_time((string) $input['menu_planning_time']);
+        }
+        if (array_key_exists('menu_planning_show_backend_links', $input)) {
+            $options['menu_planning_show_backend_links'] = !empty($input['menu_planning_show_backend_links']) ? 1 : 0;
+        }
+        if (array_key_exists('deposit_enabled', $input)) {
+            $options['deposit_enabled'] = !empty($input['deposit_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('deposit_exclude_from_shipping_minimum', $input)) {
+            $options['deposit_exclude_from_shipping_minimum'] = !empty($input['deposit_exclude_from_shipping_minimum']) ? 1 : 0;
+        }
+        if (array_key_exists('show_range_note', $input)) {
+            $options['show_range_note'] = !empty($input['show_range_note']) ? 1 : 0;
+        }
+        if (array_key_exists('price_display_single_enabled', $input)) {
+            $options['price_display_single_enabled'] = !empty($input['price_display_single_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('price_display_single_regular_enabled', $input)) {
+            $options['price_display_single_regular_enabled'] = !empty($input['price_display_single_regular_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('price_display_single_sale_enabled', $input)) {
+            $options['price_display_single_sale_enabled'] = !empty($input['price_display_single_sale_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('price_display_variable_range_enabled', $input)) {
+            $options['price_display_variable_range_enabled'] = !empty($input['price_display_variable_range_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('price_display_variable_sale_enabled', $input)) {
+            $options['price_display_variable_sale_enabled'] = !empty($input['price_display_variable_sale_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('price_display_variable_selection_enabled', $input)) {
+            $options['price_display_variable_selection_enabled'] = !empty($input['price_display_variable_selection_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('price_display_grouped_enabled', $input)) {
+            $options['price_display_grouped_enabled'] = !empty($input['price_display_grouped_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('price_display_cart_item_price_enabled', $input)) {
+            $options['price_display_cart_item_price_enabled'] = !empty($input['price_display_cart_item_price_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('price_display_cart_item_subtotal_enabled', $input)) {
+            $options['price_display_cart_item_subtotal_enabled'] = !empty($input['price_display_cart_item_subtotal_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('price_display_cart_subtotal_enabled', $input)) {
+            $options['price_display_cart_subtotal_enabled'] = !empty($input['price_display_cart_subtotal_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('price_display_cart_total_enabled', $input)) {
+            $options['price_display_cart_total_enabled'] = !empty($input['price_display_cart_total_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('price_display_order_total_enabled', $input)) {
+            $options['price_display_order_total_enabled'] = !empty($input['price_display_order_total_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('price_display_custom_css', $input)) {
+            $options['price_display_custom_css'] = $this->sanitize_price_display_custom_css((string) $input['price_display_custom_css']);
+        }
 
-        $current_delivery_times = Plugin::opt('delivery_times', []);
-        $options['delivery_times'] = $this->sanitize_delivery_times(
-            $input['delivery_times'] ?? $current_delivery_times,
-            $input['delivery_times_new'] ?? []
-        );
+        if (array_key_exists('emails_tracking_enabled', $input)) {
+            $options['emails_tracking_enabled'] = !empty($input['emails_tracking_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('emails_invoice_enabled', $input)) {
+            $options['emails_invoice_enabled'] = !empty($input['emails_invoice_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('emails_tracking_template', $input)) {
+            $default_email_template = $this->default_email_tracking_template();
+            $current_email_template = Plugin::opt('emails_tracking_template', $default_email_template);
+            $raw_email_template     = (string) $input['emails_tracking_template'];
+            if (trim($raw_email_template) === '') {
+                $raw_email_template = $default_email_template;
+            }
+            $options['emails_tracking_template'] = $this->sanitize_field_template(
+                $raw_email_template,
+                (string) $current_email_template,
+                [
+                    'slug'           => 'emails_tracking_template',
+                    'settings_label' => __('Tracking-Link Ausgabe', 'lotzapp-for-woocommerce'),
+                ]
+            );
+        }
+
+        if (array_key_exists('delivery_times', $input) || array_key_exists('delivery_times_new', $input)) {
+            $current_delivery_times = Plugin::opt('delivery_times', []);
+            $options['delivery_times'] = $this->sanitize_delivery_times(
+                $input['delivery_times'] ?? $current_delivery_times,
+                $input['delivery_times_new'] ?? []
+            );
+        }
 
         foreach (Field_Registry::all() as $field) {
-            $options[$field['option_key']] = !empty($input[$field['option_key']]) ? 1 : 0;
-            if (!empty($field['heading_option_key'])) {
+            $option_key = $field['option_key'];
+            if (array_key_exists($option_key, $input)) {
+                $options[$option_key] = !empty($input[$option_key]) ? 1 : 0;
+            }
+            if (!empty($field['heading_option_key']) && array_key_exists($field['heading_option_key'], $input)) {
                 $current_template = Plugin::opt($field['heading_option_key'], '');
-                $raw_template     = isset($input[$field['heading_option_key']]) ? (string) $input[$field['heading_option_key']] : '';
+                $raw_template     = (string) $input[$field['heading_option_key']];
                 $options[$field['heading_option_key']] = $this->sanitize_field_template($raw_template, (string) $current_template, $field);
             }
-        $basic_placeholders = [Field_Registry::TEMPLATE_PLACEHOLDER, '{{ca_prefix}}'];
         }
+        $basic_placeholders = [Field_Registry::TEMPLATE_PLACEHOLDER, '{{ca_prefix}}'];
         $current_single_template = Plugin::opt('price_display_single_template', '{{ca_prefix}}{{value}}');
         $raw_single_template     = isset($input['price_display_single_template']) ? (string) $input['price_display_single_template'] : (string) $current_single_template;
         $options['price_display_single_template'] = $this->sanitize_field_template(
@@ -1159,8 +1242,6 @@ foreach ($price_display_groups as $slug => $group) {
             $basic_placeholders
         );
 
-        $selectors_raw            = isset($input['locked_fields']) ? (string) $input['locked_fields'] : '';
-        
         $raw_single_template     = isset($input['price_display_single_template']) ? (string) $input['price_display_single_template'] : (string) $current_single_template;
         $options['price_display_single_template'] = $this->sanitize_field_template(
             $raw_single_template,
@@ -1235,8 +1316,10 @@ foreach ($price_display_groups as $slug => $group) {
             ]
         );
 
-        $selectors_raw            = isset($input['locked_fields']) ? (string) $input['locked_fields'] : '';
-        $options['locked_fields'] = array_values(array_unique(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $selectors_raw)))));
+        if (array_key_exists('locked_fields', $input)) {
+            $selectors_raw = (string) $input['locked_fields'];
+            $options['locked_fields'] = array_values(array_unique(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $selectors_raw)))));
+        }
 
         add_settings_error('lotzwoo_settings', 'lotzwoo-saved', __('Einstellungen gespeichert.', 'lotzapp-for-woocommerce'), 'updated');
 
@@ -1528,13 +1611,14 @@ foreach ($price_display_groups as $slug => $group) {
     public function render(): void
     {
         $tab  = isset($_GET['tab']) ? sanitize_key((string) $_GET['tab']) : 'general';
-        $tab  = in_array($tab, ['general', 'ca-prices', 'product-images', 'menu-planning', 'delivery-times', 'emails'], true) ? $tab : 'general';
+        $tab  = in_array($tab, ['general', 'ca-prices', 'product-images', 'menu-planning', 'delivery-times', 'deposit', 'emails'], true) ? $tab : 'general';
         $tabs = [
             'general'   => __('Allgemein', 'lotzapp-for-woocommerce'),
             'ca-prices' => __('Preise', 'lotzapp-for-woocommerce'),
             'product-images' => __('Produktbilder', 'lotzapp-for-woocommerce'),
             'menu-planning'  => __('Menueplanung', 'lotzapp-for-woocommerce'),
             'delivery-times' => __('Lieferzeit', 'lotzapp-for-woocommerce'),
+            'deposit' => __('Pfand', 'lotzapp-for-woocommerce'),
             'emails'    => __('Emails', 'lotzapp-for-woocommerce'),
         ];
         $base_url = menu_page_url('lotzwoo-settings', false);
@@ -1599,6 +1683,7 @@ foreach ($price_display_groups as $slug => $group) {
                     <fieldset class="lotzwoo-setting-toggle">
                         <legend class="screen-reader-text"><?php esc_html_e('Ca-Preis-Optionen', 'lotzapp-for-woocommerce'); ?></legend>
                         <label for="lotzwoo_ca_prices_enabled">
+                            <input type="hidden" name="lotzwoo_options[ca_prices_enabled]" value="0" />
                             <input type="checkbox" id="lotzwoo_ca_prices_enabled" name="lotzwoo_options[ca_prices_enabled]" value="1" <?php checked($ca_prices_enabled); ?> />
                             <?php esc_html_e('Ca-Preise aktivieren', 'lotzapp-for-woocommerce'); ?>
                         </label>
@@ -1702,6 +1787,7 @@ foreach ($price_display_groups as $slug => $group) {
                     <fieldset class="lotzwoo-setting-toggle">
                         <legend class="screen-reader-text"><?php esc_html_e('Menueplanung Optionen', 'lotzapp-for-woocommerce'); ?></legend>
                         <label for="lotzwoo_menu_planning_enabled">
+                            <input type="hidden" name="lotzwoo_options[menu_planning_enabled]" value="0" />
                             <input type="checkbox" id="lotzwoo_menu_planning_enabled" name="lotzwoo_options[menu_planning_enabled]" value="1" <?php checked($menu_planning_enabled); ?> />
                             <?php esc_html_e('Menueplanung aktivieren', 'lotzapp-for-woocommerce'); ?>
                         </label>
@@ -1742,6 +1828,46 @@ foreach ($price_display_groups as $slug => $group) {
                     <?php
                 } elseif ($tab === 'delivery-times') {
                     do_settings_sections('lotzwoo-settings-delivery-times');
+                } elseif ($tab === 'deposit') {
+                    do_settings_sections('lotzwoo-settings-deposit');
+                    $deposit_enabled = (bool) Plugin::opt('deposit_enabled', 0);
+                    $deposit_exclude = (bool) Plugin::opt('deposit_exclude_from_shipping_minimum', 1);
+                    ?>
+                    <fieldset class="lotzwoo-setting-toggle">
+                        <legend class="screen-reader-text"><?php esc_html_e('Pfand Optionen', 'lotzapp-for-woocommerce'); ?></legend>
+                        <label for="lotzwoo_deposit_enabled">
+                            <input type="hidden" name="lotzwoo_options[deposit_enabled]" value="0" />
+                            <input type="checkbox" id="lotzwoo_deposit_enabled" name="lotzwoo_options[deposit_enabled]" value="1" <?php checked($deposit_enabled); ?> />
+                            <?php esc_html_e('Pfand aktivieren', 'lotzapp-for-woocommerce'); ?>
+                        </label>
+                        <p class="description"><?php esc_html_e('Damit die Pfandberechnung funktioniert, muss das Feld "Pfandbetrag" in "Allgemein" / "Sonstiges" aktiviert sein.', 'lotzapp-for-woocommerce'); ?></p>
+                        <div id="lotzwoo-deposit-exclude-setting" <?php echo $deposit_enabled ? '' : 'style="display:none;"'; ?>>
+                            <label for="lotzwoo_deposit_exclude_from_shipping_minimum">
+                                <input type="hidden" name="lotzwoo_options[deposit_exclude_from_shipping_minimum]" value="0" />
+                                <input type="checkbox" id="lotzwoo_deposit_exclude_from_shipping_minimum" name="lotzwoo_options[deposit_exclude_from_shipping_minimum]" value="1" <?php checked($deposit_exclude); ?> />
+                                <?php esc_html_e('Von Versandkosten/Mindestbestellwert-Berechnungen ausschliessen', 'lotzapp-for-woocommerce'); ?>
+                            </label>
+                        </div>
+                    </fieldset>
+                    <script>
+                    (function() {
+                        var checkbox = document.getElementById('lotzwoo_deposit_enabled');
+                        var target = document.getElementById('lotzwoo-deposit-exclude-setting');
+                        if (!checkbox || !target) {
+                            return;
+                        }
+                        var toggle = function () {
+                            target.style.display = checkbox.checked ? '' : 'none';
+                        };
+                        checkbox.addEventListener('change', toggle);
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', toggle);
+                        } else {
+                            toggle();
+                        }
+                    })();
+                    </script>
+                    <?php
                 } elseif ($tab === 'emails') {
                     do_settings_sections('lotzwoo-settings-emails');
                 }

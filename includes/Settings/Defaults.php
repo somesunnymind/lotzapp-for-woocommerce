@@ -57,6 +57,8 @@ class Defaults
             'emails_tracking_enabled'  => 1,
             'emails_invoice_enabled'   => 1,
             'emails_tracking_template' => '<p>Hier geht\'s zur <strong>Sendungsverfolgung:</strong><br>{{value}}</p>',
+            'deposit_enabled'          => 0,
+            'deposit_exclude_from_shipping_minimum' => 1,
         ];
 
         foreach (Field_Registry::option_defaults() as $option_key => $value) {

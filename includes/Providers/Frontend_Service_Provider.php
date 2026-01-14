@@ -5,6 +5,7 @@ namespace Lotzwoo\Providers;
 use Lotzwoo\Container;
 use Lotzwoo\Frontend\Buffer_Manager;
 use Lotzwoo\Frontend\Checkout_Range_Note;
+use Lotzwoo\Frontend\Deposit_Manager;
 use Lotzwoo\Frontend\Price_Display_Templates;
 use Lotzwoo\Frontend\Product_Custom_Fields_Display;
 use Lotzwoo\Blocks\Price_Display_Extension;
@@ -29,6 +30,10 @@ class Frontend_Service_Provider implements Service_Provider_Interface
             return new Checkout_Range_Note();
         });
 
+        $container->set(Deposit_Manager::class, static function () {
+            return new Deposit_Manager();
+        });
+
         $container->set(Product_Custom_Fields_Display::class, static function () {
             return new Product_Custom_Fields_Display();
         });
@@ -43,6 +48,7 @@ class Frontend_Service_Provider implements Service_Provider_Interface
         $container->get(Price_Display_Templates::class);
         $container->get(Buffer_Manager::class);
         $container->get(Checkout_Range_Note::class);
+        $container->get(Deposit_Manager::class);
         $container->get(Product_Custom_Fields_Display::class);
         $container->get(Price_Display_Extension::class);
     }
