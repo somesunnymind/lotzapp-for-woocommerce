@@ -59,6 +59,7 @@ class Defaults
             'emails_tracking_template' => '<p>Hier geht\'s zur <strong>Sendungsverfolgung:</strong><br>{{value}}</p>',
             'deposit_enabled'          => 0,
             'deposit_exclude_from_shipping_minimum' => 1,
+            'deposit_show_tax_label'   => 0,
         ];
 
         foreach (Field_Registry::option_defaults() as $option_key => $value) {

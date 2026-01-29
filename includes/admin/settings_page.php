@@ -1004,6 +1004,9 @@ foreach ($price_display_groups as $slug => $group) {
         if (array_key_exists('deposit_exclude_from_shipping_minimum', $input)) {
             $options['deposit_exclude_from_shipping_minimum'] = !empty($input['deposit_exclude_from_shipping_minimum']) ? 1 : 0;
         }
+        if (array_key_exists('deposit_show_tax_label', $input)) {
+            $options['deposit_show_tax_label'] = !empty($input['deposit_show_tax_label']) ? 1 : 0;
+        }
         if (array_key_exists('show_range_note', $input)) {
             $options['show_range_note'] = !empty($input['show_range_note']) ? 1 : 0;
         }
@@ -1832,6 +1835,7 @@ foreach ($price_display_groups as $slug => $group) {
                     do_settings_sections('lotzwoo-settings-deposit');
                     $deposit_enabled = (bool) Plugin::opt('deposit_enabled', 0);
                     $deposit_exclude = (bool) Plugin::opt('deposit_exclude_from_shipping_minimum', 1);
+                    $deposit_show_tax_label = (bool) Plugin::opt('deposit_show_tax_label', 0);
                     ?>
                     <fieldset class="lotzwoo-setting-toggle">
                         <legend class="screen-reader-text"><?php esc_html_e('Pfand Optionen', 'lotzapp-for-woocommerce'); ?></legend>
@@ -1848,16 +1852,26 @@ foreach ($price_display_groups as $slug => $group) {
                                 <?php esc_html_e('Von Versandkosten/Mindestbestellwert-Berechnungen ausschliessen', 'lotzapp-for-woocommerce'); ?>
                             </label>
                         </div>
+                        <div id="lotzwoo-deposit-tax-label-setting" <?php echo $deposit_enabled ? '' : 'style="display:none;"'; ?>>
+                            <label for="lotzwoo_deposit_show_tax_label">
+                                <input type="hidden" name="lotzwoo_options[deposit_show_tax_label]" value="0" />
+                                <input type="checkbox" id="lotzwoo_deposit_show_tax_label" name="lotzwoo_options[deposit_show_tax_label]" value="1" <?php checked($deposit_show_tax_label); ?> />
+                                <?php esc_html_e('Steuerhinweis in Pfand-Bezeichnung anzeigen', 'lotzapp-for-woocommerce'); ?>
+                            </label>
+                        </div>
                     </fieldset>
                     <script>
                     (function() {
                         var checkbox = document.getElementById('lotzwoo_deposit_enabled');
                         var target = document.getElementById('lotzwoo-deposit-exclude-setting');
-                        if (!checkbox || !target) {
+                        var taxTarget = document.getElementById('lotzwoo-deposit-tax-label-setting');
+                        if (!checkbox || !target || !taxTarget) {
                             return;
                         }
                         var toggle = function () {
-                            target.style.display = checkbox.checked ? '' : 'none';
+                            var display = checkbox.checked ? '' : 'none';
+                            target.style.display = display;
+                            taxTarget.style.display = display;
                         };
                         checkbox.addEventListener('change', toggle);
                         if (document.readyState === 'loading') {

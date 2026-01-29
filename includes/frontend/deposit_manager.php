@@ -245,17 +245,23 @@ class Deposit_Manager
     private function get_tax_rate_label(array $rates): string
     {
         if (empty($rates)) {
-            return '0%';
+            return __('Steuerfrei', 'lotzapp-for-woocommerce');
         }
 
         $labels = [];
         foreach ($rates as $rate_id => $rate) {
-            $labels[] = WC_Tax::get_rate_percent($rate_id);
+            $label = WC_Tax::get_rate_label($rate_id);
+            if ($label === '') {
+                $label = WC_Tax::get_rate_percent($rate_id);
+            }
+            if ($label !== '') {
+                $labels[] = $label;
+            }
         }
 
         $labels = array_unique(array_filter($labels));
         if (empty($labels)) {
-            return '0%';
+            return __('Steuerfrei', 'lotzapp-for-woocommerce');
         }
 
         return implode(' + ', $labels);
@@ -264,7 +270,11 @@ class Deposit_Manager
     private function build_fee_label(string $tax_class, string $rate_label): string
     {
         $base_label = __('Pfand', 'lotzapp-for-woocommerce');
-        $rate_label = $rate_label !== '' ? $rate_label : '0%';
+        if (!Plugin::opt('deposit_show_tax_label', 0)) {
+            return $base_label;
+        }
+
+        $rate_label = $rate_label !== '' ? $rate_label : __('Steuerfrei', 'lotzapp-for-woocommerce');
 
         return sprintf('%s (%s)', $base_label, $rate_label);
     }
