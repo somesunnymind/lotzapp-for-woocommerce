@@ -91,6 +91,7 @@ class GitHub_Updater
         add_filter('pre_set_site_transient_update_plugins', [$this, 'inject_update']);
         add_filter('plugins_api', [$this, 'filter_plugin_information'], 20, 3);
         add_filter('http_request_args', [$this, 'maybe_authorize_http'], 15, 2);
+        add_filter('upgrader_source_selection', [$this, 'fix_plugin_folder_name'], 10, 4);
         add_action('upgrader_process_complete', [$this, 'maybe_flush_cache'], 10, 2);
     }
 
@@ -220,6 +221,60 @@ class GitHub_Updater
     public function purge_cache(): void
     {
         delete_site_transient($this->cache_key);
+    }
+
+    /**
+     * Ensure the extracted folder matches the plugin slug (GitHub zipball uses a hash).
+     *
+     * @param string $source
+     * @param string $remote_source
+     * @param \WP_Upgrader $upgrader
+     * @param array<string, mixed> $hook_extra
+     * @return string
+     */
+    public function fix_plugin_folder_name($source, $remote_source, $upgrader, $hook_extra): string
+    {
+        if (($hook_extra['type'] ?? '') !== 'plugin') {
+            return (string) $source;
+        }
+
+        $target = $hook_extra['plugin'] ?? '';
+        if ($target !== $this->plugin_basename) {
+            return (string) $source;
+        }
+
+        $desired_folder = dirname($this->plugin_basename);
+        $source = rtrim((string) $source, '/\\');
+        $current_folder = basename($source);
+
+        if ($current_folder === $desired_folder) {
+            return $source;
+        }
+
+        $new_source = trailingslashit(dirname($source)) . $desired_folder;
+
+        if (file_exists($new_source)) {
+            return $source;
+        }
+
+        if (!function_exists('WP_Filesystem')) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+
+        global $wp_filesystem;
+        if (!is_object($wp_filesystem)) {
+            WP_Filesystem();
+        }
+
+        if (is_object($wp_filesystem) && $wp_filesystem->move($source, $new_source, true)) {
+            return $new_source;
+        }
+
+        if (@rename($source, $new_source)) {
+            return $new_source;
+        }
+
+        return $source;
     }
 
     /**

@@ -2,10 +2,10 @@
 /**
  * Plugin Name:       LotzApp for WooCommerce
  * Description:       Erweitert WooCommerce-Shops um Ca.-Preislogik, Admin-Tools zur Datenpflege, automatisierte Menüaktualisierung und mehr.
- * Version:           0.1.10
+ * Version:           0.1.12
  * Author:            somesunnymind.com
  * Requires at least: 5.8
- * Requires PHP:      7.4
+ * Requires PHP:      8.1
  * Text Domain:       lotzapp-for-woocommerce
  */
 
