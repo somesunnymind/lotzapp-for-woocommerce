@@ -17,6 +17,8 @@ class Email_Features
     private const TRACKING_META_KEY = 'lotzwoo_tracking_url';
     private const INVOICE_META_KEY  = 'lotzwoo_invoice_url';
 
+    private static ?self $instance = null;
+
     /**
      * @var array<string, string>
      */
@@ -34,10 +36,10 @@ class Email_Features
 
     public function register(): void
     {
+        self::$instance = $this;
+
         add_action('init', [$this, 'maybe_register_order_meta']);
         add_shortcode('lotzwoo_tracking_links', [$this, 'render_tracking_shortcode']);
-        add_action('woocommerce_email_order_details', [$this, 'maybe_render_tracking_block'], 5, 4);
-        add_action('woocommerce_email_before_order_table', [$this, 'maybe_render_tracking_block'], 5, 4);
         add_filter('woocommerce_email_attachments', [$this, 'maybe_attach_invoice'], 10, 4);
         add_action('woocommerce_email_after_send', [$this, 'cleanup_temp_files'], 10, 0);
         add_action('shutdown', [$this, 'cleanup_temp_files']);
@@ -122,6 +124,49 @@ class Email_Features
         return $plain_text
             ? $this->build_plain_text_tracking($order)
             : $this->build_html_tracking($order);
+    }
+
+    public static function instance(): ?self
+    {
+        return self::$instance;
+    }
+
+    /**
+     * Template helper for custom email placement.
+     *
+     * @param WC_Order|int|null $order
+     */
+    public function render_tracking_block_for_template($order = null, bool $plain_text = false, string $email_id = 'customer_completed_order'): string
+    {
+        if (!$this->tracking_feature_enabled()) {
+            return '';
+        }
+
+        if (is_numeric($order)) {
+            $order = $this->resolve_order((int) $order);
+        }
+
+        if (!$order instanceof WC_Order) {
+            return '';
+        }
+
+        if ($email_id !== '' && $email_id !== 'customer_completed_order') {
+            return '';
+        }
+
+        if ($email_id !== '' && $this->has_rendered_tracking_block($order, $email_id)) {
+            return '';
+        }
+
+        $content = $plain_text
+            ? $this->build_plain_text_tracking($order)
+            : $this->build_html_tracking($order);
+
+        if ($content !== '' && $email_id !== '') {
+            $this->mark_tracking_block_rendered($order, $email_id);
+        }
+
+        return $content;
     }
 
     /**
@@ -234,11 +279,18 @@ class Email_Features
             return '';
         }
 
-        $anchors = array_map(
-            static function (string $url): string {
+        $label_base = __('Sendung verfolgen', 'lotzapp-for-woocommerce');
+        $total      = count($links);
+        $index      = 0;
+        $anchors    = array_map(
+            static function (string $url) use ($label_base, $total, &$index): string {
+                $index++;
                 $href  = esc_url($url);
-                $label = esc_html($url);
-                return '<a href="' . $href . '" target="_blank" rel="noopener noreferrer">' . $label . '</a>';
+                $label = $label_base;
+                if ($total > 1) {
+                    $label .= ' (' . $index . ')';
+                }
+                return '<a href="' . $href . '" target="_blank" rel="noopener noreferrer">' . esc_html($label) . '</a>';
             },
             $links
         );
@@ -257,8 +309,19 @@ class Email_Features
             return '';
         }
 
-        $heading = __('Tracking-Link(s):', 'lotzapp-for-woocommerce');
-        return $heading . "\n" . implode("\n", $links) . "\n";
+        $label_base = __('Sendung verfolgen', 'lotzapp-for-woocommerce');
+        $total      = count($links);
+        $lines      = [];
+
+        foreach ($links as $index => $url) {
+            $label = $label_base;
+            if ($total > 1) {
+                $label .= ' (' . ($index + 1) . ')';
+            }
+            $lines[] = $label . ': ' . $url;
+        }
+
+        return implode("\n", $lines) . "\n";
     }
 
     private function get_tracking_links(WC_Order $order): array
@@ -341,11 +404,16 @@ class Email_Features
         }
 
         $validated = wp_http_validate_url($url);
-        if (!$validated) {
+        if ($validated) {
+            return $validated;
+        }
+
+        $parts = wp_parse_url($url);
+        if (!is_array($parts) || empty($parts['scheme']) || empty($parts['host'])) {
             return '';
         }
 
-        return $validated;
+        return $url;
     }
 
     private function get_tracking_template(): string
@@ -574,12 +642,12 @@ class Email_Features
         <div class="lotzwoo-email-meta-fields">
             <p class="form-field lotzwoo_tracking_url_field">
                 <label for="lotzwoo_tracking_url"><?php esc_html_e('Tracking-Links', 'lotzapp-for-woocommerce'); ?></label>
-                <textarea style="min-height:90px;" id="lotzwoo_tracking_url" name="lotzwoo_tracking_url" class="large-text"><?php echo esc_textarea($tracking_value); ?></textarea>
-                <span class="description"><?php esc_html_e('Ein Link pro Zeile. Wird im Kundenabschluss-Mail mit dem LotzApp-Template dargestellt.', 'lotzapp-for-woocommerce'); ?></span>
+                <textarea style="min-height:90px; display:block;" id="lotzwoo_tracking_url" name="lotzwoo_tracking_url" class="large-text"><?php echo esc_textarea($tracking_value); ?></textarea>
+                <span class="description"><?php esc_html_e('Ein Link pro Zeile. Wird in WooCommerce-Mails mit dem LotzApp Tracking Link Template-Helper ausgegeben.', 'lotzapp-for-woocommerce'); ?></span>
             </p>
             <p class="form-field lotzwoo_invoice_url_field">
                 <label for="lotzwoo_invoice_url"><?php esc_html_e('Rechnungs-PDF URL', 'lotzapp-for-woocommerce'); ?></label>
-                <input type="url" class="widefat" id="lotzwoo_invoice_url" name="lotzwoo_invoice_url" value="<?php echo esc_attr($invoice_value); ?>" />
+                <input type="url" class="widefat" id="lotzwoo_invoice_url" name="lotzwoo_invoice_url" value="" style="display:block;"<?php echo esc_attr($invoice_value); ?>" />
                 <span class="description"><?php esc_html_e('Wird heruntergeladen und als Anhang an customer_completed_order angefuegt.', 'lotzapp-for-woocommerce'); ?></span>
             </p>
         </div>

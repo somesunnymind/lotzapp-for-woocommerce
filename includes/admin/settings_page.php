@@ -531,14 +531,14 @@ foreach ($price_display_groups as $slug => $group) {
                 $checked          = $tracking_enabled ? 'checked' : '';
                 echo '<input type="hidden" name="lotzwoo_options[emails_tracking_enabled]" value="0" />';
                 echo '<label><input type="checkbox" id="lotzwoo_emails_tracking_enabled" name="lotzwoo_options[emails_tracking_enabled]" value="1" ' . $checked . ' /> ';
-                echo esc_html__('Tracking-Link Block in WooCommerce-E-Mails anzeigen', 'lotzapp-for-woocommerce') . '</label>';
-                echo '<p class="description">' . esc_html__('Aktiviert den Shortcode-Block innerhalb von customer_completed_order.', 'lotzapp-for-woocommerce') . '</p>';
+                echo esc_html__('Tracking-Link Ausgabe aktivieren', 'lotzapp-for-woocommerce') . '</label>';
+                echo '<p class="description">' . esc_html__('Aktiviert die Tracking-Ausgabe fuer Shortcode und Template-Helper.', 'lotzapp-for-woocommerce') . '</p>';
 
                 $style = $tracking_enabled ? '' : ' style="display:none;"';
                 echo '<div id="lotzwoo-tracking-template"' . $style . '>';
                 echo '<textarea name="lotzwoo_options[emails_tracking_template]" rows="4" class="large-text code">' . esc_textarea($value) . '</textarea>';
                 $description = sprintf(
-                    __('%s wird durch eine Liste klickbarer Tracking-Links ersetzt.', 'lotzapp-for-woocommerce'),
+                    __('%s wird durch eine Liste klickbarer Tracking-Links ersetzt, die im Bestellungs-Metafield <code>lotzwoo_tracking_url</code> gespeichert wurden. .', 'lotzapp-for-woocommerce'),
                     '<code>' . esc_html($placeholder) . '</code>'
                 );
                 echo '<p class="description">' . wp_kses_post($description) . '</p>';
@@ -583,6 +583,7 @@ foreach ($price_display_groups as $slug => $group) {
             __('ERP-Integration', 'lotzapp-for-woocommerce'),
             function () {
                 $shortcode_example = '<code>[lotzwoo_tracking_links order_id="123"]</code>';
+                $helper_example    = '<code>&lt;?php echo lotzwoo_render_tracking_links($order, $plain_text); ?&gt;</code>';
                 echo '<p class="description">' . esc_html__('ERP-Systeme schreiben vor Versand Tracking- und Rechnungslinks in diese Metafelder der Bestellung:', 'lotzapp-for-woocommerce') . '</p>';
                 echo '<ul>';
                 echo '<li><code>lotzwoo_tracking_url</code> &ndash; ' . esc_html__('eine oder mehrere URLs (jeweils neue Zeile).', 'lotzapp-for-woocommerce') . '</li>';
@@ -593,6 +594,11 @@ foreach ($price_display_groups as $slug => $group) {
                     $shortcode_example
                 );
                 echo '<p class="description">' . wp_kses_post($shortcode_text) . '</p>';
+                $helper_text = sprintf(
+                    __('Template-Helper fuer eigene Email-Templates: %s (Position frei waehlbar).', 'lotzapp-for-woocommerce'),
+                    $helper_example
+                );
+                echo '<p class="description">' . wp_kses_post($helper_text) . '</p>';
             },
             $emails_page,
             'lotzwoo_emails'
@@ -1916,27 +1922,34 @@ foreach ($price_display_groups as $slug => $group) {
                     </form>
                 </div>
             <?php elseif ($tab === 'emails') : ?>
-                <p><?php esc_html_e('Hinweis: Die ERP-Schnittstelle muss die genannten Metafelder fuellen, bevor das Versandabschluss-Email verschickt wird.', 'lotzapp-for-woocommerce'); ?></p>
-                <hr />
                 <h2><?php esc_html_e('Email testen', 'lotzapp-for-woocommerce'); ?></h2>
                 <form action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post">
                     <input type="hidden" name="action" value="lotzwoo_send_test_email" />
                     <?php wp_nonce_field('lotzwoo_send_test_email'); ?>
-                    <table class="form-table" role="presentation">
-                        <tr>
-                            <th scope="row">
-                                <label for="lotzwoo_email_test_order_id"><?php esc_html_e('Bestell-ID', 'lotzapp-for-woocommerce'); ?></label>
-                            </th>
-                            <td>
-                                <input type="number" min="1" class="small-text" id="lotzwoo_email_test_order_id" name="lotzwoo_email_test_order_id" required />
-                                <p class="description"><?php esc_html_e('Loest das Kunden-E-Mail customer_completed_order fuer die angegebene Bestellung erneut aus, unabhaengig vom aktuellen Status.', 'lotzapp-for-woocommerce'); ?></p>
-                            </td>
-                        </tr>
-                    </table>
-                    <?php submit_button(__('customer_completed_order E-Mail senden', 'lotzapp-for-woocommerce'), 'secondary'); ?>
-                </form>
-            <?php endif; ?>
-        </div>
+                     <table class="form-table" role="presentation">
+                         <tr>
+                             <th scope="row">
+                                 <label for="lotzwoo_email_test_order_id"><?php esc_html_e('Bestell-ID', 'lotzapp-for-woocommerce'); ?></label>
+                             </th>
+                             <td>
+                                 <input type="number" min="1" class="small-text" id="lotzwoo_email_test_order_id" name="lotzwoo_email_test_order_id" required />
+                                 <p class="description"><?php esc_html_e('Loest das Kunden-E-Mail customer_completed_order fuer die angegebene Bestellung erneut aus, unabhaengig vom aktuellen Status.', 'lotzapp-for-woocommerce'); ?></p>
+                             </td>
+                         </tr>
+                         <tr>
+                             <th scope="row">
+                                 <label for="lotzwoo_email_test_recipient"><?php esc_html_e('Empfaenger fuer Test-E-Mail', 'lotzapp-for-woocommerce'); ?></label>
+                             </th>
+                             <td>
+                                 <input type="email" class="regular-text" id="lotzwoo_email_test_recipient" name="lotzwoo_email_test_recipient" placeholder="test@example.com" />
+                                 <p class="description"><?php esc_html_e('Optional: Wenn gesetzt, wird die Test-E-Mail an diese Adresse gesendet, statt an den Kunden.', 'lotzapp-for-woocommerce'); ?></p>
+                             </td>
+                         </tr>
+                     </table>
+                     <?php submit_button(__('customer_completed_order E-Mail senden', 'lotzapp-for-woocommerce'), 'secondary'); ?>
+                 </form>
+             <?php endif; ?>
+         </div>
         <?php
     }
 
@@ -2037,17 +2050,25 @@ foreach ($price_display_groups as $slug => $group) {
             exit;
         }
 
-        $order = wc_get_order($order_id);
-        if (!$order) {
-            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-missing-order', sprintf(__('Die Bestellung mit der ID %d wurde nicht gefunden.', 'lotzapp-for-woocommerce'), $order_id), 'error');
-            wp_safe_redirect($redirect);
-            exit;
-        }
+         $order = wc_get_order($order_id);
+         if (!$order) {
+             add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-missing-order', sprintf(__('Die Bestellung mit der ID %d wurde nicht gefunden.', 'lotzapp-for-woocommerce'), $order_id), 'error');
+             wp_safe_redirect($redirect);
+             exit;
+         }
 
-        $mailer = function_exists('WC') ? WC()->mailer() : null;
-        if (!$mailer || !method_exists($mailer, 'get_emails')) {
-            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-mailer-missing', __('WooCommerce Mailer konnte nicht initialisiert werden.', 'lotzapp-for-woocommerce'), 'error');
-            wp_safe_redirect($redirect);
+         $override_recipient = '';
+         if (isset($_POST['lotzwoo_email_test_recipient'])) {
+             $candidate = sanitize_email((string) wp_unslash($_POST['lotzwoo_email_test_recipient']));
+             if ($candidate !== '' && is_email($candidate)) {
+                 $override_recipient = $candidate;
+             }
+         }
+
+         $mailer = function_exists('WC') ? WC()->mailer() : null;
+         if (!$mailer || !method_exists($mailer, 'get_emails')) {
+             add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-mailer-missing', __('WooCommerce Mailer konnte nicht initialisiert werden.', 'lotzapp-for-woocommerce'), 'error');
+             wp_safe_redirect($redirect);
             exit;
         }
 
@@ -2065,12 +2086,22 @@ foreach ($price_display_groups as $slug => $group) {
             }
         }
 
-        if (!$email_instance) {
-            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-handler-missing', __('customer_completed_order E-Mail konnte nicht gefunden werden.', 'lotzapp-for-woocommerce'), 'error');
-        } else {
-            $email_instance->trigger($order_id, $order);
-            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-success', sprintf(__('Test-E-Mail fuer Bestellung %s wurde versendet.', 'lotzapp-for-woocommerce'), $order->get_order_number()), 'updated');
-        }
+         if (!$email_instance) {
+             add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-handler-missing', __('customer_completed_order E-Mail konnte nicht gefunden werden.', 'lotzapp-for-woocommerce'), 'error');
+         } else {
+             $recipient_filter = null;
+             if ($override_recipient !== '') {
+                 $recipient_filter = static function ($recipient) use ($override_recipient) {
+                     return $override_recipient;
+                 };
+                 add_filter('woocommerce_email_recipient_customer_completed_order', $recipient_filter, 10, 2);
+             }
+             $email_instance->trigger($order_id, $order);
+             if ($recipient_filter) {
+                 remove_filter('woocommerce_email_recipient_customer_completed_order', $recipient_filter, 10);
+             }
+             add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-success', sprintf(__('Test-E-Mail fuer Bestellung %s wurde versendet.', 'lotzapp-for-woocommerce'), $order->get_order_number()), 'updated');
+         }
 
         wp_safe_redirect($redirect);
         exit;

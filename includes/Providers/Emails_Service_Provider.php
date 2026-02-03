@@ -20,6 +20,7 @@ class Emails_Service_Provider implements Service_Provider_Interface
 
     public function boot(Container $container): void
     {
+        require_once plugin_dir_path(LOTZWOO_PLUGIN_FILE) . 'includes/Emails/template_helpers.php';
         $container->get(Email_Features::class)->register();
     }
 }
