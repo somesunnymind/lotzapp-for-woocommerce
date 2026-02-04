@@ -1,10 +1,10 @@
 === LotzApp for WooCommerce ===
-Contributors: yourname
+Contributors: Michael-Johannes Hahn
 Tags: woocommerce, pricing, estimated, cart, buffer
 Requires at least: 6.3
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 0.1.12
+Stable tag: 0.1.13
 WC requires at least: 7.0
 WC tested up to: 9.2
 License: GPLv2 or later
@@ -29,6 +29,3 @@ Trackinglinks erscheinen automatisch in der WooCommerce-E-Mail `customer_complet
 1. Ordner `lotzapp-for-woocommerce` in `/wp-content/plugins/` hochladen
 2. In WP-Admin unter *Plugins* aktivieren
 3. Einstellungen unter *WooCommerce* -> *LotzApp* vornehmen
-
-
-== Changelog ==

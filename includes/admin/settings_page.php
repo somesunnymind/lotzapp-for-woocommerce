@@ -1932,8 +1932,8 @@ foreach ($price_display_groups as $slug => $group) {
                                  <label for="lotzwoo_email_test_order_id"><?php esc_html_e('Bestell-ID', 'lotzapp-for-woocommerce'); ?></label>
                              </th>
                              <td>
-                                 <input type="number" min="1" class="small-text" id="lotzwoo_email_test_order_id" name="lotzwoo_email_test_order_id" required />
-                                 <p class="description"><?php esc_html_e('Loest das Kunden-E-Mail customer_completed_order fuer die angegebene Bestellung erneut aus, unabhaengig vom aktuellen Status.', 'lotzapp-for-woocommerce'); ?></p>
+                                <input type="text" class="regular-text" id="lotzwoo_email_test_order_id" name="lotzwoo_email_test_order_id" required />
+                                <p class="description"><?php esc_html_e('Akzeptiert Bestell-ID oder Bestellnummer (inkl. Praefix/leading zeros). Loest das Kunden-E-Mail customer_completed_order erneut aus, unabhaengig vom aktuellen Status.', 'lotzapp-for-woocommerce'); ?></p>
                              </td>
                          </tr>
                          <tr>
@@ -2043,19 +2043,23 @@ foreach ($price_display_groups as $slug => $group) {
 
         $redirect = $this->get_emails_tab_url();
 
-        $order_id = isset($_POST['lotzwoo_email_test_order_id']) ? absint($_POST['lotzwoo_email_test_order_id']) : 0;
-        if ($order_id < 1) {
-            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-invalid', __('Bitte eine gueltige Bestell-ID eingeben.', 'lotzapp-for-woocommerce'), 'error');
+        $raw_identifier = isset($_POST['lotzwoo_email_test_order_id']) ? trim((string) wp_unslash($_POST['lotzwoo_email_test_order_id'])) : '';
+        if ($raw_identifier === '') {
+            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-invalid', __('Bitte eine gueltige Bestell-ID oder Bestellnummer eingeben.', 'lotzapp-for-woocommerce'), 'error');
             wp_safe_redirect($redirect);
             exit;
         }
 
-         $order = wc_get_order($order_id);
-         if (!$order) {
-             add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-missing-order', sprintf(__('Die Bestellung mit der ID %d wurde nicht gefunden.', 'lotzapp-for-woocommerce'), $order_id), 'error');
-             wp_safe_redirect($redirect);
-             exit;
-         }
+        $order_id = absint($raw_identifier);
+        $order = $order_id > 0 ? wc_get_order($order_id) : null;
+        if (!$order) {
+            $order = $this->find_order_by_number($raw_identifier);
+        }
+        if (!$order) {
+            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-missing-order', __('Die Bestellung wurde nicht gefunden.', 'lotzapp-for-woocommerce'), 'error');
+            wp_safe_redirect($redirect);
+            exit;
+        }
 
          $override_recipient = '';
          if (isset($_POST['lotzwoo_email_test_recipient'])) {
@@ -2086,9 +2090,9 @@ foreach ($price_display_groups as $slug => $group) {
             }
         }
 
-         if (!$email_instance) {
-             add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-handler-missing', __('customer_completed_order E-Mail konnte nicht gefunden werden.', 'lotzapp-for-woocommerce'), 'error');
-         } else {
+        if (!$email_instance) {
+            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-handler-missing', __('customer_completed_order E-Mail konnte nicht gefunden werden.', 'lotzapp-for-woocommerce'), 'error');
+        } else {
              $recipient_filter = null;
              if ($override_recipient !== '') {
                  $recipient_filter = static function ($recipient) use ($override_recipient) {
@@ -2097,11 +2101,11 @@ foreach ($price_display_groups as $slug => $group) {
                  add_filter('woocommerce_email_recipient_customer_completed_order', $recipient_filter, 10, 2);
              }
              $email_instance->trigger($order_id, $order);
-             if ($recipient_filter) {
-                 remove_filter('woocommerce_email_recipient_customer_completed_order', $recipient_filter, 10);
-             }
-             add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-success', sprintf(__('Test-E-Mail fuer Bestellung %s wurde versendet.', 'lotzapp-for-woocommerce'), $order->get_order_number()), 'updated');
-         }
+            if ($recipient_filter) {
+                remove_filter('woocommerce_email_recipient_customer_completed_order', $recipient_filter, 10);
+            }
+            add_settings_error('lotzwoo_settings', 'lotzwoo-email-test-success', sprintf(__('Test-E-Mail fuer Bestellung %s wurde versendet.', 'lotzapp-for-woocommerce'), $order->get_order_number()), 'updated');
+        }
 
         wp_safe_redirect($redirect);
         exit;
@@ -2115,6 +2119,41 @@ foreach ($price_display_groups as $slug => $group) {
         }
 
         return add_query_arg('tab', 'emails', $url);
+    }
+
+    private function find_order_by_number(string $value): ?\WC_Order
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        $orders = wc_get_orders([
+            'limit'      => 1,
+            'return'     => 'objects',
+            'meta_key'   => '_order_number',
+            'meta_value' => $value,
+        ]);
+
+        if (!empty($orders)) {
+            $first = reset($orders);
+            if ($first instanceof \WC_Order) {
+                return $first;
+            }
+        }
+
+        $recent = wc_get_orders([
+            'limit'  => 200,
+            'return' => 'objects',
+        ]);
+
+        foreach ($recent as $order) {
+            if ($order instanceof \WC_Order && (string) $order->get_order_number() === $value) {
+                return $order;
+            }
+        }
+
+        return null;
     }
 
     private function ensure_buffer_product(): int
