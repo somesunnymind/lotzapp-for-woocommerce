@@ -46,6 +46,12 @@
 
         // Ensure fresh data after initial paint.
         fetchList(true);
+        window.setInterval(() => {
+            if (document.hidden || hasBlockingLocalState()) {
+                return;
+            }
+            fetchList(false);
+        }, 15000);
 
         /**
          * Helpers
@@ -123,28 +129,141 @@
                 });
         }
 
+        function hasBlockingLocalState() {
+            if (state.creating || document.querySelector('.lotzwoo-menu-planning__dialog-backdrop')) {
+                return true;
+            }
+
+            return state.entries.some((entry) => {
+                return entry && (entry.dirty || entry.saving || entry.deleting || entry.runningNow);
+            });
+        }
+
         function handleCreate() {
             if (state.creating) {
                 return;
             }
-            state.creating = true;
-            state.error = '';
-            render();
 
-            apiPost('lotzwoo_menu_plan_create')
-                .then((data) => {
-                    if (data.schedule) {
-                        state.schedule = data.schedule;
-                    }
-                    state.creating = false;
-                    state.error = '';
-                    fetchList(false);
+            openPlanDialog({
+                mode: 'create',
+                title: config.i18n.dialogCreateTitle || config.i18n.createButton || 'Neuen Menüplan anlegen',
+                confirmLabel: config.i18n.dialogConfirmCreate || 'Anlegen',
+                prefill: getCurrentSlotPrefill(),
+            }).then((result) => {
+                if (!result) {
+                    return;
+                }
+                state.creating = true;
+                state.error = '';
+                render();
+
+                apiPost('lotzwoo_menu_plan_create', {
+                    scheduled_at: combineDateTime(result.date, result.time),
                 })
-                .catch((error) => {
-                    state.creating = false;
-                    state.error = error.message || config.i18n.errorGeneric;
-                    render();
-                });
+                    .then((data) => {
+                        if (data.schedule) {
+                            state.schedule = data.schedule;
+                        }
+                        state.creating = false;
+                        state.error = '';
+                        fetchList(false);
+                    })
+                    .catch((error) => {
+                        state.creating = false;
+                        state.error = error.message || config.i18n.errorGeneric;
+                        render();
+                    });
+            });
+        }
+
+        function handleEdit(entryId) {
+            const entry = state.entries.find((item) => item.id === entryId);
+            if (!entry || entry.saving || entry.deleting || entry.runningNow) {
+                return;
+            }
+
+            const isCurrent = Boolean(entry.is_current);
+            const confirmLabel = isCurrent
+                ? (config.i18n.dialogConfirmSaveApply || 'Speichern und jetzt anwenden')
+                : (config.i18n.dialogConfirmSave || 'Speichern');
+
+            openPlanDialog({
+                mode: 'edit',
+                title: config.i18n.dialogEditTitle || 'Menüplan bearbeiten',
+                confirmLabel,
+                prefill: getEntryDateTimePrefill(entry),
+            }).then((result) => {
+                if (!result) {
+                    return;
+                }
+
+                entry.saving = true;
+                state.error = '';
+                render();
+
+                const params = {
+                    id: entryId,
+                    scheduled_at: combineDateTime(result.date, result.time),
+                };
+                if (isCurrent) {
+                    params.apply_now = '1';
+                }
+
+                apiPost('lotzwoo_menu_plan_update', params)
+                    .then((data) => {
+                        entry.saving = false;
+                        if (data && data.schedule) {
+                            state.schedule = data.schedule;
+                        }
+                        state.error = '';
+                        fetchList(false);
+                    })
+                    .catch((error) => {
+                        entry.saving = false;
+                        state.error = error.message || config.i18n.errorGeneric;
+                        render();
+                    });
+            });
+        }
+
+        function handleDuplicate(entryId) {
+            const source = state.entries.find((item) => item.id === entryId);
+            if (!source || state.creating) {
+                return;
+            }
+
+            openPlanDialog({
+                mode: 'duplicate',
+                title: config.i18n.dialogDuplicateTitle || 'Menüplan duplizieren',
+                confirmLabel: config.i18n.dialogConfirmCreate || 'Anlegen',
+                prefill: getCurrentSlotPrefill(),
+            }).then((result) => {
+                if (!result) {
+                    return;
+                }
+
+                state.creating = true;
+                state.error = '';
+                render();
+
+                apiPost('lotzwoo_menu_plan_create', {
+                    scheduled_at: combineDateTime(result.date, result.time),
+                    payload: JSON.stringify(clonePayload(source.payload || {})),
+                })
+                    .then((data) => {
+                        if (data.schedule) {
+                            state.schedule = data.schedule;
+                        }
+                        state.creating = false;
+                        state.error = '';
+                        fetchList(false);
+                    })
+                    .catch((error) => {
+                        state.creating = false;
+                        state.error = error.message || config.i18n.errorGeneric;
+                        render();
+                    });
+            });
         }
 
         function handleSave(entryId) {
@@ -167,7 +286,7 @@
                     entry.saving = false;
                     entry.dirty = false;
                     state.error = '';
-                    render();
+                    fetchList(false);
                 })
                 .catch((error) => {
                     entry.saving = false;
@@ -328,13 +447,15 @@
             createButton.addEventListener('click', handleCreate);
             toolbar.appendChild(createButton);
 
-            if (state.schedule) {
+            if (state.schedule && state.schedule.mode !== 'manual') {
                 const info = document.createElement('div');
                 info.className = 'lotzwoo-menu-planning__schedule-info';
                 const scheduleLabel = formatScheduleLabel(state.schedule);
+                const nextSlotValue = state.schedule.nextSlotDisplay || state.schedule.nextSlotLocal || '';
+                const nextLabel = config.i18n.nextSlotLabel || 'Nächster Termin';
                 info.innerHTML = `
                     <strong>${escapeHtml(scheduleLabel)}</strong>
-                    <span>${escapeHtml(state.schedule.nextSlotDisplay || state.schedule.nextSlotLocal || '')}</span>
+                    <span>${escapeHtml(nextLabel)}: ${escapeHtml(nextSlotValue)}</span>
                 `;
                 toolbar.appendChild(info);
             }
@@ -406,6 +527,17 @@
                 );
             }
             timeCell.innerHTML = timeParts.join('');
+
+            const editButton = document.createElement('button');
+            editButton.type = 'button';
+            editButton.className = 'lotzwoo-menu-planning__row-edit-trigger';
+            editButton.setAttribute('aria-label', config.i18n.editActionLabel || config.i18n.editAction || 'Bearbeiten');
+            editButton.title = config.i18n.editActionLabel || config.i18n.editAction || 'Bearbeiten';
+            editButton.textContent = '✎';
+            editButton.disabled = entry.saving || entry.deleting || entry.runningNow;
+            editButton.addEventListener('click', () => handleEdit(entry.id));
+            timeCell.appendChild(editButton);
+
             tr.appendChild(timeCell);
 
             state.tags.forEach((tag) => {
@@ -433,6 +565,8 @@
                         option.dataset.permalink = product.permalink ? String(product.permalink) : '';
                         option.dataset.editUrl = product.edit_url ? String(product.edit_url) : '';
                         option.dataset.sku = product.sku ? String(product.sku) : '';
+                        option.dataset.stock = product.stock === null || product.stock === undefined ? '' : String(product.stock);
+                        option.dataset.hasSuccessor = product.has_successor ? '1' : '0';
                         const selectedValues = entry.draftPayload[tag.slug] || [];
                         option.selected = selectedValues.includes(product.id);
                         select.appendChild(option);
@@ -461,15 +595,14 @@
             deleteButton.disabled = entry.deleting || entry.saving;
             deleteButton.addEventListener('click', () => handleDelete(entry.id));
 
-            if (entry.is_active || entry.is_current) {
-                const runButton = document.createElement('button');
-                runButton.type = 'button';
-                runButton.className = 'button button-secondary';
-                runButton.textContent = entry.runningNow ? config.i18n.applyingNow : config.i18n.applyNow;
-                runButton.disabled = entry.runningNow || entry.saving || entry.deleting || !entry.dirty;
-                runButton.addEventListener('click', () => handleRunNow(entry.id));
-                actionCell.appendChild(runButton);
-            } else {
+            const duplicateButton = document.createElement('button');
+            duplicateButton.type = 'button';
+            duplicateButton.className = 'button';
+            duplicateButton.textContent = config.i18n.duplicateAction || 'Duplizieren';
+            duplicateButton.disabled = entry.saving || entry.deleting || entry.runningNow || state.creating;
+            duplicateButton.addEventListener('click', () => handleDuplicate(entry.id));
+
+            if (!entry.is_active && !entry.is_current) {
                 const saveButton = document.createElement('button');
                 saveButton.type = 'button';
                 saveButton.className = 'button button-secondary';
@@ -478,6 +611,18 @@
                 saveButton.addEventListener('click', () => handleSave(entry.id));
                 actionCell.appendChild(saveButton);
             }
+
+            if (shouldShowRunNowButton(entry)) {
+                const runButton = document.createElement('button');
+                runButton.type = 'button';
+                runButton.className = 'button button-secondary';
+                runButton.textContent = entry.runningNow ? config.i18n.applyingNow : getRunNowLabel(entry);
+                runButton.disabled = entry.runningNow || entry.saving || entry.deleting || state.creating;
+                runButton.addEventListener('click', () => handleRunNow(entry.id));
+                actionCell.appendChild(runButton);
+            }
+
+            actionCell.appendChild(duplicateButton);
             actionCell.appendChild(deleteButton);
 
             tr.appendChild(actionCell);
@@ -492,6 +637,46 @@
             } else {
                 row.classList.remove('lotzwoo-menu-planning__row--busy');
             }
+        }
+
+        function shouldShowRunNowButton(entry) {
+            if (!entry) {
+                return false;
+            }
+            if (entry.is_active || entry.is_current) {
+                return Boolean(entry.dirty);
+            }
+            const nextFutureEntry = getNextFuturePendingEntry();
+            return Boolean(nextFutureEntry && parseInt(nextFutureEntry.id, 10) === parseInt(entry.id, 10));
+        }
+
+        function getRunNowLabel(entry) {
+            if (entry && (entry.is_active || entry.is_current)) {
+                return config.i18n.applyNow || 'Änderungen jetzt anwenden';
+            }
+            return config.i18n.activateNow || 'Jetzt aktivieren';
+        }
+
+        function getNextFuturePendingEntry() {
+            const now = new Date();
+            let target = null;
+
+            state.entries.forEach((entry) => {
+                if (!entry || entry.status !== 'pending') {
+                    return;
+                }
+
+                const date = parseUtcDate(entry.scheduled_at_utc, entry.scheduled_at_local);
+                if (!date || date <= now) {
+                    return;
+                }
+
+                if (!target || date < parseUtcDate(target.scheduled_at_utc, target.scheduled_at_local)) {
+                    target = entry;
+                }
+            });
+
+            return target;
         }
 
         function renderHistorySection(container) {
@@ -607,12 +792,18 @@
                     item: function (data, escape) {
                         const tags = extractTagNames(data);
                         const pills = renderTagPills(tags, escape);
+                        const indicator = hasSuccessorIndicator(data)
+                            ? '<span class="lotzwoo-menu-planning__ts-item-successor-indicator" title="'
+                              + escape(config.i18n.successorIndicator || 'Nachfolgeprodukt definiert')
+                              + '">&#10526;</span>'
+                            : '';
                         return (
                             '<div class="lotzwoo-menu-planning__ts-item">' +
                             '<span class="lotzwoo-menu-planning__ts-item-label">' +
                             escape(data.text || '') +
                             '</span>' +
                             pills +
+                            indicator +
                             '</div>'
                         );
                     },
@@ -712,6 +903,16 @@
                     .map((name) => '<span class="lotzwoo-menu-planning__tag-pill">' + escape(name) + '</span>')
                     .join('');
                 return '<span class="lotzwoo-menu-planning__tag-pills">' + pills + '</span>';
+            }
+
+            function hasSuccessorIndicator(data) {
+                if (data && data.$option && data.$option.dataset && data.$option.dataset.hasSuccessor === '1') {
+                    return true;
+                }
+                if (data && data.has_successor) {
+                    return true;
+                }
+                return false;
             }
         }
 
@@ -837,14 +1038,63 @@
         function renderDetailContent(product) {
             const viewLabel = config.i18n.viewProduct || 'Anzeigen';
             const editLabel = config.i18n.editProduct || 'Bearbeiten';
-            const skuTemplate = config.i18n.skuLabel || 'SKU: %s';
-            const skuMissing = config.i18n.skuMissing || 'unset';
+            // const skuTemplate = config.i18n.skuLabel || 'SKU: %s';
+            // const skuMissing = config.i18n.skuMissing || 'unset';
+            const stockLabel = config.i18n.stockLabel || 'Lagerstand';
+            const successorLabel = config.i18n.successorLabel || 'Nachfolgeprodukt';
 
             const permalink = product && product.permalink ? String(product.permalink) : '';
             const editUrl = product && product.edit_url ? String(product.edit_url) : '';
-            const skuValue = product && product.sku ? String(product.sku) : '';
+            // const skuValue = product && product.sku ? String(product.sku) : '';
             const productName = product && product.name ? String(product.name) : '';
+            const stockValue = product && (product.stock !== null && product.stock !== undefined) ? String(product.stock) : '';
 
+            const linkContent = buildDetailLinks(permalink, editUrl, viewLabel, editLabel);
+
+            // const resolvedSku = skuValue ? skuTemplate.replace('%s', skuValue) : skuTemplate.replace('%s', skuMissing);
+            const infoLabel = config.i18n.detailInfoLabel || 'Info';
+            const titleParts = [];
+            if (productName) {
+                titleParts.push(escapeHtml(productName));
+            }
+            // if (resolvedSku) {
+            //     titleParts.push('(' + escapeHtml(resolvedSku) + ')');
+            // }
+            const titleContent = titleParts.length ? escapeHtml(infoLabel) + ': ' + titleParts.join(' ') : '';
+            const titleSection = titleContent ? '<div class="lotzwoo-menu-planning__ts-item-title">' + titleContent + '</div>' : '';
+            const stockSection = stockValue !== ''
+                ? '<div class="lotzwoo-menu-planning__ts-item-stock">' + escapeHtml(stockLabel) + ': ' + escapeHtml(stockValue) + '</div>'
+                : '';
+            const linksSection = linkContent ? '<div class="lotzwoo-menu-planning__ts-item-links">' + linkContent + '</div>' : '';
+
+            let successorSection = '';
+            if (product && product.has_successor) {
+                const successorName  = product.successor_name ? String(product.successor_name) : '';
+                const successorStock = (product.successor_stock !== null && product.successor_stock !== undefined) ? String(product.successor_stock) : '';
+                const successorPermalink = product.successor_permalink ? String(product.successor_permalink) : '';
+                const successorEditUrl   = product.successor_edit_url ? String(product.successor_edit_url) : '';
+                const successorLinks = buildDetailLinks(successorPermalink, successorEditUrl, viewLabel, editLabel);
+
+                const successorNameLine = successorName
+                    ? '<div class="lotzwoo-menu-planning__ts-item-successor-name">' + escapeHtml(successorLabel) + ': ' + escapeHtml(successorName) + '</div>'
+                    : '';
+                const successorStockLine = successorStock !== ''
+                    ? '<div class="lotzwoo-menu-planning__ts-item-stock">' + escapeHtml(stockLabel) + ': ' + escapeHtml(successorStock) + '</div>'
+                    : '';
+                const successorLinksLine = successorLinks
+                    ? '<div class="lotzwoo-menu-planning__ts-item-links">' + successorLinks + '</div>'
+                    : '';
+                successorSection =
+                    '<hr class="lotzwoo-menu-planning__ts-item-separator">' +
+                    '<div class="lotzwoo-menu-planning__ts-item-successor">' +
+                    successorNameLine + successorStockLine + successorLinksLine +
+                    '</div>';
+            }
+
+            return '<div class="lotzwoo-menu-planning__ts-item-detail">' + titleSection + stockSection + linksSection + successorSection + '</div>';
+        }
+
+        function buildDetailLinks(permalink, editUrl, viewLabel, editLabel) {
             const viewMarkup = permalink
                 ? '<a href="' + escapeAttr(permalink) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(viewLabel) + '</a>'
                 : '';
@@ -852,22 +1102,7 @@
                 allowProductEditLinks && editUrl
                     ? '<a href="' + escapeAttr(editUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(editLabel) + '</a>'
                     : '';
-            const linkContent = [viewMarkup, editMarkup].filter(Boolean).join('<span class="lotzwoo-menu-planning__ts-item-link-gap">|</span>');
-
-            const resolvedSku = skuValue ? skuTemplate.replace('%s', skuValue) : skuTemplate.replace('%s', skuMissing);
-            const infoLabel = config.i18n.detailInfoLabel || 'Info';
-            const titleParts = [];
-            if (productName) {
-                titleParts.push(escapeHtml(productName));
-            }
-            if (resolvedSku) {
-                titleParts.push('(' + escapeHtml(resolvedSku) + ')');
-            }
-            const titleContent = titleParts.length ? escapeHtml(infoLabel) + ': ' + titleParts.join(' ') : '';
-            const titleSection = titleContent ? '<div class="lotzwoo-menu-planning__ts-item-title">' + titleContent + '</div>' : '';
-            const linksSection = linkContent ? '<div class="lotzwoo-menu-planning__ts-item-links">' + linkContent + '</div>' : '';
-
-            return '<div class="lotzwoo-menu-planning__ts-item-detail">' + titleSection + linksSection + '</div>';
+            return [viewMarkup, editMarkup].filter(Boolean).join('<span class="lotzwoo-menu-planning__ts-item-link-gap">|</span>');
         }
 
         function formatStatus(entryOrStatus) {
@@ -1112,6 +1347,256 @@
             }
 
             return (config.i18n.countdownRemaining || 'Noch %s').replace('%s', dayLabel);
+        }
+
+        /**
+         * Show a modal dialog for picking date + time. Resolves to {date, time}
+         * on confirm, or null on cancel (ESC / backdrop click / cancel button).
+         */
+        function openPlanDialog(options) {
+            const opts = options || {};
+            return new Promise((resolve) => {
+                const minDateTime = getCurrentDateTimeParts();
+                const initialPrefill = clampPrefillToMin(opts.prefill || {}, minDateTime);
+                const backdrop = document.createElement('div');
+                backdrop.className = 'lotzwoo-menu-planning__dialog-backdrop';
+                backdrop.setAttribute('role', 'presentation');
+
+                const dialog = document.createElement('div');
+                dialog.className = 'lotzwoo-menu-planning__dialog';
+                dialog.setAttribute('role', 'dialog');
+                dialog.setAttribute('aria-modal', 'true');
+                dialog.tabIndex = -1;
+
+                const title = document.createElement('h2');
+                title.className = 'lotzwoo-menu-planning__dialog-title';
+                title.textContent = opts.title || '';
+                dialog.appendChild(title);
+
+                const fields = document.createElement('div');
+                fields.className = 'lotzwoo-menu-planning__dialog-fields';
+
+                const dateField = buildDialogField(
+                    'date',
+                    config.i18n.dialogDateLabel || 'Datum',
+                    'date',
+                    initialPrefill.date
+                );
+                const timeField = buildDialogField(
+                    'time',
+                    config.i18n.dialogTimeLabel || 'Uhrzeit',
+                    'time',
+                    initialPrefill.time
+                );
+                dateField.input.min = minDateTime.date;
+                timeField.input.min = dateField.input.value === minDateTime.date ? minDateTime.time : '';
+
+                fields.appendChild(dateField.wrapper);
+                fields.appendChild(timeField.wrapper);
+                dialog.appendChild(fields);
+
+                const validation = document.createElement('p');
+                validation.className = 'lotzwoo-menu-planning__dialog-validation';
+                validation.setAttribute('role', 'alert');
+                dialog.appendChild(validation);
+
+                const footer = document.createElement('div');
+                footer.className = 'lotzwoo-menu-planning__dialog-footer';
+
+                const cancelButton = document.createElement('button');
+                cancelButton.type = 'button';
+                cancelButton.className = 'button button-link-delete';
+                cancelButton.textContent = config.i18n.dialogCancel || 'Abbrechen';
+
+                const confirmButton = document.createElement('button');
+                confirmButton.type = 'button';
+                confirmButton.className = 'button button-secondary';
+                confirmButton.textContent = opts.confirmLabel || (config.i18n.dialogConfirmSave || 'Speichern');
+
+                footer.appendChild(cancelButton);
+                footer.appendChild(confirmButton);
+                dialog.appendChild(footer);
+
+                backdrop.appendChild(dialog);
+                document.body.appendChild(backdrop);
+                requestAnimationFrame(() => {
+                    backdrop.classList.add('lotzwoo-menu-planning__dialog-backdrop--visible');
+                });
+
+                const previouslyFocused = document.activeElement;
+
+                let settled = false;
+                const close = (value) => {
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    document.removeEventListener('keydown', onKey, true);
+                    backdrop.classList.remove('lotzwoo-menu-planning__dialog-backdrop--visible');
+                    window.setTimeout(() => {
+                        if (backdrop.parentNode) {
+                            backdrop.parentNode.removeChild(backdrop);
+                        }
+                        if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+                            try { previouslyFocused.focus(); } catch (e) { /* no-op */ }
+                        }
+                        resolve(value);
+                    }, 500);
+                };
+
+                const onSubmit = () => {
+                    const date = dateField.input.value.trim();
+                    const time = timeField.input.value.trim();
+                    if (!date || !time) {
+                        validation.textContent = config.i18n.dialogValidationMissing || 'Bitte Datum und Uhrzeit angeben.';
+                        return;
+                    }
+                    if (isDateTimeBefore(date, time, minDateTime)) {
+                        validation.textContent = config.i18n.dialogValidationPast || 'Bitte einen Zeitpunkt ab jetzt wählen.';
+                        dateField.input.min = minDateTime.date;
+                        timeField.input.min = date === minDateTime.date ? minDateTime.time : '';
+                        return;
+                    }
+                    close({ date, time });
+                };
+
+                const onKey = (event) => {
+                    if (event.key === 'Escape') {
+                        event.preventDefault();
+                        close(null);
+                        return;
+                    }
+                    if (event.key === 'Enter') {
+                        // Submit on Enter from any field inside the dialog.
+                        if (dialog.contains(event.target)) {
+                            event.preventDefault();
+                            onSubmit();
+                        }
+                    }
+                };
+
+                cancelButton.addEventListener('click', () => close(null));
+                confirmButton.addEventListener('click', onSubmit);
+                dateField.input.addEventListener('change', () => {
+                    if (dateField.input.value < minDateTime.date) {
+                        dateField.input.value = minDateTime.date;
+                    }
+                    timeField.input.min = dateField.input.value === minDateTime.date ? minDateTime.time : '';
+                    if (dateField.input.value === minDateTime.date && timeField.input.value && timeField.input.value < minDateTime.time) {
+                        timeField.input.value = minDateTime.time;
+                    }
+                    validation.textContent = '';
+                });
+                timeField.input.addEventListener('change', () => {
+                    if (dateField.input.value === minDateTime.date && timeField.input.value && timeField.input.value < minDateTime.time) {
+                        timeField.input.value = minDateTime.time;
+                    }
+                    validation.textContent = '';
+                });
+                backdrop.addEventListener('click', (event) => {
+                    if (event.target === backdrop) {
+                        close(null);
+                    }
+                });
+                document.addEventListener('keydown', onKey, true);
+
+                // Focus first input.
+                setTimeout(() => {
+                    if (dateField.input.value) {
+                        timeField.input.focus();
+                    } else {
+                        dateField.input.focus();
+                    }
+                }, 0);
+            });
+        }
+
+        function buildDialogField(name, labelText, inputType, value) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'lotzwoo-menu-planning__dialog-field';
+            const label = document.createElement('label');
+            const inputId = 'lotzwoo-menu-planning-dialog-' + name + '-' + Math.random().toString(36).slice(2, 8);
+            label.setAttribute('for', inputId);
+            label.textContent = labelText;
+            const input = document.createElement('input');
+            input.type = inputType;
+            input.id = inputId;
+            input.name = name;
+            if (value) {
+                input.value = value;
+            }
+            wrapper.appendChild(label);
+            wrapper.appendChild(input);
+            return { wrapper, input };
+        }
+
+        function getCurrentDateTimeParts() {
+            const now = new Date();
+            return {
+                date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+                time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+            };
+        }
+
+        function clampPrefillToMin(prefill, minDateTime) {
+            const date = prefill && prefill.date ? String(prefill.date) : '';
+            const time = prefill && prefill.time ? String(prefill.time) : '';
+            if (!date || !time || isDateTimeBefore(date, time, minDateTime)) {
+                return { date: minDateTime.date, time: minDateTime.time };
+            }
+            return { date, time };
+        }
+
+        function isDateTimeBefore(date, time, minDateTime) {
+            if (!date || !time) {
+                return false;
+            }
+            return `${date} ${time}` < `${minDateTime.date} ${minDateTime.time}`;
+        }
+
+        /**
+         * Split a "Y-m-d H:i:s" local datetime string into {date, time}.
+         */
+        function splitLocalDateTime(localString) {
+            if (typeof localString !== 'string' || !localString) {
+                return { date: '', time: '' };
+            }
+            const normalized = localString.replace('T', ' ');
+            const parts = normalized.split(' ');
+            const datePart = parts[0] || '';
+            const timePartRaw = parts[1] || '';
+            const timeBits = timePartRaw.split(':');
+            const time = timeBits.length >= 2 ? `${timeBits[0]}:${timeBits[1]}` : '';
+            return { date: datePart, time };
+        }
+
+        function combineDateTime(date, time) {
+            const safeTime = time && time.length === 5 ? `${time}:00` : (time || '00:00:00');
+            return `${date} ${safeTime}`;
+        }
+
+        function getCurrentSlotPrefill() {
+            // Manual mode: dialog opens empty so the user has to make an
+            // explicit choice every time.
+            if (state.schedule && state.schedule.mode === 'manual') {
+                return { date: '', time: '' };
+            }
+            if (state.schedule && state.schedule.nextSlotLocal) {
+                return splitLocalDateTime(state.schedule.nextSlotLocal);
+            }
+            // Fallback: now.
+            const now = new Date();
+            return {
+                date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+                time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+            };
+        }
+
+        function getEntryDateTimePrefill(entry) {
+            if (entry && entry.scheduled_at_local) {
+                return splitLocalDateTime(entry.scheduled_at_local);
+            }
+            return { date: '', time: '' };
         }
 
         function apiGet(action, params = {}) {

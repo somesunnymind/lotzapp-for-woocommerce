@@ -183,7 +183,7 @@ class Settings_Page
             'lotzwoo_menu_planning',
             __('Menüplanung', 'lotzapp-for-woocommerce'),
             function () {
-                echo '<p>' . esc_html__('Konfiguration der zentralen Menüplanung.', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p>' . esc_html__('Steuert, wann vorbereitete Menüpläne aktiv werden und welche Produkte im Webshop als aktuelles Menü sichtbar sind.', 'lotzapp-for-woocommerce') . '</p>';
             },
             $menu_planning_page
         );
@@ -194,7 +194,7 @@ class Settings_Page
             function () {
                 $value = (int) Plugin::opt('menu_planning_page_id');
                 echo '<input id="lotzwoo_menu_planning_page_id" type="number" name="lotzwoo_options[menu_planning_page_id]" value="' . esc_attr($value) . '" class="small-text" />';
-                echo '<p class="description">' . esc_html__('ID der WordPress-Seite, auf der die Menüplanung gepflegt wird.', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p class="description">' . esc_html__('ID der WordPress-Seite, auf der die Menüplanung mit dem Shortcode [lotzwoo_menu_planning] gepflegt wird.', 'lotzapp-for-woocommerce') . '</p>';
                 if ($value > 0) {
                     $view_link = get_permalink($value);
                     if ($view_link) {
@@ -214,9 +214,35 @@ class Settings_Page
             'lotzwoo_menu_planning_schedule',
             __('Zeitpunkt der Men&uuml;-Aktualisierung', 'lotzapp-for-woocommerce'),
             function () {
-                echo '<p>' . esc_html__('Setze den Zeitpunkt, zu dem der Men&uuml;plan im Webshop ge&auml;ndert wird.', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p>' . esc_html__('Legt fest, wann vorbereitete Menüpläne im Webshop aktiviert werden. Die Ausführung läuft über WP-Cron und verwendet die WordPress-Zeitzone.', 'lotzapp-for-woocommerce') . '</p>';
             },
             $menu_planning_page
+        );
+
+        add_settings_field(
+            'menu_planning_mode',
+            __('Modus', 'lotzapp-for-woocommerce'),
+            function () {
+                $value = (string) Plugin::opt('menu_planning_mode', 'auto');
+                $value = $value === 'manual' ? 'manual' : 'auto';
+                $choices = [
+                    'auto'   => __('Automatisch', 'lotzapp-for-woocommerce'),
+                    'manual' => __('Manuell', 'lotzapp-for-woocommerce'),
+                ];
+                echo '<select id="lotzwoo_menu_planning_mode" name="lotzwoo_options[menu_planning_mode]" data-lotzwoo-mode>';
+                foreach ($choices as $slug => $label) {
+                    printf(
+                        '<option value="%s"%s>%s</option>',
+                        esc_attr($slug),
+                        selected($value, $slug, false),
+                        esc_html($label)
+                    );
+                }
+                echo '</select>';
+                echo '<p class="description">' . esc_html__('Automatisch: Neue Menüpläne erhalten den nächsten freien Termin nach dem unten definierten Rhythmus. Manuell: Datum und Uhrzeit werden für jeden Menüplan einzeln im Menüplaner gesetzt.', 'lotzapp-for-woocommerce') . '</p>';
+            },
+            $menu_planning_page,
+            'lotzwoo_menu_planning_schedule'
         );
 
         add_settings_field(
@@ -235,7 +261,7 @@ class Settings_Page
                     );
                 }
                 echo '</select>';
-                echo '<p class="description">' . esc_html__('Wähle, wie oft der Menüplan automatisch im Webshop übernommen wird.', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p class="description">' . esc_html__('Bestimmt den Rhythmus, in dem neue automatische Menüplan-Termine vorgeschlagen werden.', 'lotzapp-for-woocommerce') . '</p>';
                 $this->ensure_schedule_script();
             },
             $menu_planning_page,
@@ -266,7 +292,7 @@ class Settings_Page
                     );
                 }
                 echo '</select>';
-                echo '<p class="description">' . esc_html__('Bestimmt, an welchem Wochentag vorausgewählte Produkte automatisch aktualisiert werden.', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p class="description">' . esc_html__('Bestimmt, an welchem Wochentag der nächste automatische Menüplan-Termin liegen soll.', 'lotzapp-for-woocommerce') . '</p>';
                 echo '</div>';
 
                 $monthly_style = $frequency === 'monthly' ? '' : ' style="display:none;"';
@@ -282,7 +308,7 @@ class Settings_Page
                     );
                 }
                 echo '</select>';
-                echo '<p class="description">' . esc_html__('Wähle den Kalendertag, an dem die Menüs übertragen werden sollen.', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p class="description">' . esc_html__('Wähle den Kalendertag, an dem der nächste automatische Menüplan-Termin liegen soll.', 'lotzapp-for-woocommerce') . '</p>';
                 printf(
                     '<p class="description" data-lotzwoo-monthday-warning data-template="%s" style="display:none;"></p>',
                     esc_attr($warning_template)
@@ -305,7 +331,7 @@ class Settings_Page
             function () {
                 $value = (string) Plugin::opt('menu_planning_time', '07:00');
                 echo '<input id="lotzwoo_menu_planning_time" type="time" name="lotzwoo_options[menu_planning_time]" value="' . esc_attr($value) . '" />';
-                echo '<p class="description">' . esc_html__('Uhrzeit (24h-Format) f&uuml;r die automatische Men&uuml;-Aktualisierung.', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p class="description">' . esc_html__('Uhrzeit in der WordPress-Zeitzone. WP-Cron prüft regelmäßig, ob ein fälliger Menüplan aktiviert werden muss.', 'lotzapp-for-woocommerce') . '</p>';
             },
             $menu_planning_page,
             'lotzwoo_menu_planning_schedule'
@@ -313,12 +339,12 @@ class Settings_Page
 
         add_settings_field(
             'menu_planning_shortcode',
-            __('Shortcode', 'lotzapp-for-woocommerce'),
+            __('Menüdatum-Shortcode', 'lotzapp-for-woocommerce'),
             function () {
                 $example = '[lotzmenu_date period="current" value="start" format="d.m.Y H:i"]';
                 echo '<p class="description"><code>' . esc_html($example) . '</code></p>';
-                echo '<p class="description">' . esc_html__('Klartext-Ausgabe des Start-, End- oder Restzeitpunkts fuer den aktuellen oder naechsten Menueplan.', 'lotzapp-for-woocommerce') . '</p>';
-                echo '<p class="description">' . esc_html__('Parameter: period current/next, value start/end/remaining, format nach PHP date(). remaining gibt die Restzeit in Worten zurueck und wird nicht von "format" beeinflusst (z. B. \"5 Stunden\").', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p class="description">' . esc_html__('Gibt Start, Ende oder Restzeit des aktuellen oder nächsten Menüplans als Text aus. Der eigentliche Menüplaner wird mit [lotzwoo_menu_planning] eingebunden.', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p class="description">' . esc_html__('Parameter: period current/next, value start/end/remaining, format nach PHP date(). remaining gibt die Restzeit in Worten zurück und wird nicht von "format" beeinflusst (z. B. \"5 Stunden\").', 'lotzapp-for-woocommerce') . '</p>';
             },
             $menu_planning_page,
             'lotzwoo_menu_planning_schedule'
@@ -332,10 +358,120 @@ class Settings_Page
                 echo '<input type="hidden" name="lotzwoo_options[menu_planning_show_backend_links]" value="0" />';
                 echo '<label><input type="checkbox" name="lotzwoo_options[menu_planning_show_backend_links]" value="1" ' . $checked . ' /> ';
                 echo esc_html__('Bearbeiten-Links ins WooCommerce Produkt-Backend anzeigen', 'lotzapp-for-woocommerce') . '</label>';
-                echo '<p class="description">' . esc_html__('Blendet in der Menueplanung einen Bearbeiten-Link unter jedem ausgewaehlten Produkt ein.', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p class="description">' . esc_html__('Blendet im Menüplaner einen Bearbeiten-Link unter jedem ausgewählten Produkt ein. Sichtbar nur für berechtigte Backend-Nutzer.', 'lotzapp-for-woocommerce') . '</p>';
             },
             $menu_planning_page,
             'lotzwoo_menu_planning'
+        );
+
+        add_settings_section(
+            'lotzwoo_product_succession',
+            __('Produktnachfolge im Menüplan', 'lotzapp-for-woocommerce'),
+            function () {
+                echo '<p>' . esc_html__('Konfiguriere, wie ausverkaufte Produkte im aktuell aktiven Menüplan automatisch durch ein Nachfolgeprodukt ersetzt werden.', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p class="description">' . esc_html__('Bei einem Wechsel verschiebt LotzApp die passenden currentmenu_-Tags und aktualisiert nur den aktuell aktiven Menüplan. Zukünftige Menüpläne bleiben unverändert.', 'lotzapp-for-woocommerce') . '</p>';
+            },
+            $menu_planning_page
+        );
+
+        add_settings_field(
+            'product_succession_enabled',
+            __('Automatische Produktnachfolge', 'lotzapp-for-woocommerce'),
+            function () {
+                $stock_managed = get_option('woocommerce_manage_stock') === 'yes';
+                $checked       = Plugin::opt('product_succession_enabled') ? 'checked' : '';
+                $disabled      = $stock_managed ? '' : ' disabled';
+
+                echo '<input type="hidden" name="lotzwoo_options[product_succession_enabled]" value="0" />';
+                echo '<label><input type="checkbox" id="lotzwoo_product_succession_enabled" name="lotzwoo_options[product_succession_enabled]" value="1" ' . $checked . $disabled . ' /> ';
+                echo esc_html__('Automatische Nachfolge für ausverkaufte Produkte im Menüplan aktivieren', 'lotzapp-for-woocommerce') . '</label>';
+                echo '<p class="description">' . esc_html__('Ersetzt ein ausverkauftes Produkt im aktuell aktiven Menüplan durch das am Produkt hinterlegte Nachfolgeprodukt. Der Wechsel erfolgt nur, wenn das Nachfolgeprodukt veröffentlicht ist und verfügbaren Lagerbestand hat.', 'lotzapp-for-woocommerce') . '</p>';
+                echo '<p class="description">' . esc_html__('Voraussetzung: Die WooCommerce-Lagerverwaltung muss global aktiv sein und bei den betroffenen Produkten muss "Lagerbestand verwalten?" mit gepflegtem Lagerstand aktiviert sein. LotzApp verändert diese Produkt-Einstellung nicht automatisch.', 'lotzapp-for-woocommerce') . '</p>';
+
+                if (!$stock_managed) {
+                    $inventory_url = admin_url('admin.php?page=wc-settings&tab=products&section=inventory');
+                    echo '<p class="description" style="color:#b32d2e;">';
+                    echo esc_html__('Die WooCommerce-Lagerverwaltung ist derzeit deaktiviert. Aktiviere sie zuerst, um diese Funktion zu nutzen.', 'lotzapp-for-woocommerce') . ' ';
+                    printf(
+                        '<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
+                        esc_url($inventory_url),
+                        esc_html__('Zu den Lagerverwaltungs-Einstellungen', 'lotzapp-for-woocommerce')
+                    );
+                    echo '</p>';
+                }
+            },
+            $menu_planning_page,
+            'lotzwoo_product_succession'
+        );
+
+        add_settings_field(
+            'product_succession_same_category_only',
+            __('Vorschläge', 'lotzapp-for-woocommerce'),
+            function () {
+                $checked = Plugin::opt('product_succession_same_category_only') ? 'checked' : '';
+                echo '<input type="hidden" name="lotzwoo_options[product_succession_same_category_only]" value="0" />';
+                echo '<label><input type="checkbox" name="lotzwoo_options[product_succession_same_category_only]" value="1" ' . $checked . ' /> ';
+                echo esc_html__('Nur Produkte innerhalb der gleichen Produktkategorien als Nachfolgeprodukt vorschlagen', 'lotzapp-for-woocommerce') . '</label>';
+            },
+            $menu_planning_page,
+            'lotzwoo_product_succession',
+            ['class' => 'lotzwoo-product-succession-dependent']
+        );
+
+        add_settings_field(
+            'product_succession_unpaid_as_reserved',
+            __('Unbezahlte Bestellungen', 'lotzapp-for-woocommerce'),
+            function () {
+                $hold_stock_minutes = trim((string) get_option('woocommerce_hold_stock_minutes', ''));
+                $hold_stock_enabled = $hold_stock_minutes !== '';
+                $checked = Plugin::opt('product_succession_unpaid_as_reserved') ? 'checked' : '';
+                $disabled = $hold_stock_enabled ? '' : ' disabled';
+
+                echo '<input type="hidden" name="lotzwoo_options[product_succession_unpaid_as_reserved]" value="0" />';
+                echo '<label><input type="checkbox" name="lotzwoo_options[product_succession_unpaid_as_reserved]" value="1" ' . $checked . $disabled . ' /> ';
+                echo esc_html__('Unbezahlte Bestellungen temporär behandeln', 'lotzapp-for-woocommerce') . '</label>';
+                echo '<p class="description">' . esc_html__('Wenn WooCommerce Ware reserviert, behandelt LotzApp unbezahlte Bestellungen wie temporäre Reservierungen. Wird eine unbezahlte Bestellung storniert und der Lagerstand des ursprünglichen Produkts steigt wieder, kann dieses Produkt in den aktiven Menüplan zurückwechseln. Nach endgültigem Abverkauf bleibt das Nachfolgeprodukt aktiv.', 'lotzapp-for-woocommerce') . '</p>';
+
+                if (!$hold_stock_enabled) {
+                    $inventory_url = admin_url('admin.php?page=wc-settings&tab=products&section=inventory');
+                    echo '<p class="description" style="color:#b32d2e;">';
+                    echo esc_html__('Diese Option ist nur verfügbar, wenn WooCommerce "Ware reservieren (Minuten)" gesetzt ist.', 'lotzapp-for-woocommerce') . ' ';
+                    printf(
+                        '<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
+                        esc_url($inventory_url),
+                        esc_html__('Zu den Lagerverwaltungs-Einstellungen', 'lotzapp-for-woocommerce')
+                    );
+                    echo '</p>';
+                }
+            },
+            $menu_planning_page,
+            'lotzwoo_product_succession',
+            ['class' => 'lotzwoo-product-succession-dependent']
+        );
+
+        add_settings_field(
+            'stock_notifications_enabled',
+            __('Lagerstand-Benachrichtigungen', 'lotzapp-for-woocommerce'),
+            function () {
+                $checked = Plugin::opt('stock_notifications_enabled') ? 'checked' : '';
+                echo '<input type="hidden" name="lotzwoo_options[stock_notifications_enabled]" value="0" />';
+                echo '<label><input type="checkbox" id="lotzwoo_stock_notifications_enabled" name="lotzwoo_options[stock_notifications_enabled]" value="1" ' . $checked . ' /> ';
+                echo esc_html__('WooCommerce-Lagerstand-E-Mails um Nachfolgeprodukt-Infos erweitern', 'lotzapp-for-woocommerce') . '</label>';
+
+                $inventory_url = admin_url('admin.php?page=wc-settings&tab=products&section=inventory');
+                echo '<p class="description">';
+                echo esc_html__('Ergänzt die Standard-E-Mails von WooCommerce bei niedrigem Lagerstand und bei Ausverkauf um den Hinweis auf das Nachfolgeprodukt.', 'lotzapp-for-woocommerce') . ' ';
+                printf(
+                    /* translators: %s: opening/closing anchor tag to the WooCommerce inventory settings */
+                    esc_html__('Aktivierung, Schwellwert und Empfänger werden in den %sWooCommerce-Lagerverwaltungs-Einstellungen%s konfiguriert.', 'lotzapp-for-woocommerce'),
+                    '<a href="' . esc_url($inventory_url) . '" target="_blank" rel="noopener noreferrer">',
+                    '</a>'
+                );
+                echo '</p>';
+            },
+            $menu_planning_page,
+            'lotzwoo_product_succession',
+            ['class' => 'lotzwoo-product-succession-dependent']
         );
 
         add_settings_field(
@@ -573,6 +709,21 @@ foreach ($price_display_groups as $slug => $group) {
                 echo '<label><input type="checkbox" name="lotzwoo_options[emails_invoice_enabled]" value="1" ' . $checked . ' /> ';
                 echo esc_html__('Rechnung aus LotzApp als Anhang mitsenden, wenn eine URL vorhanden ist.', 'lotzapp-for-woocommerce') . '</label>';
                 echo '<p class="description">' . esc_html__('Die Datei wird lokal angehängt oder bei externen URLs heruntergeladen und beigefügt.', 'lotzapp-for-woocommerce') . '</p>';
+            },
+            $emails_page,
+            'lotzwoo_emails'
+        );
+
+        add_settings_field(
+            'emails_advanced_editing_enabled',
+            __('Erweiterte E-Mail-Bearbeitung', 'lotzapp-for-woocommerce'),
+            function () {
+                $enabled = (bool) Plugin::opt('emails_advanced_editing_enabled', 0);
+                $checked = $enabled ? 'checked' : '';
+                echo '<input type="hidden" name="lotzwoo_options[emails_advanced_editing_enabled]" value="0" />';
+                echo '<label><input type="checkbox" name="lotzwoo_options[emails_advanced_editing_enabled]" value="1" ' . $checked . ' /> ';
+                echo esc_html__('Text-Ersetzung pro WooCommerce-E-Mail aktivieren.', 'lotzapp-for-woocommerce') . '</label>';
+                echo '<p class="description">' . esc_html__('Erlaubt pro E-Mail das Ersetzen von Texten: Begrueszung/Einleitung in Bestell-E-Mails, einzelne Abschnitte in der Passwort-zuruecksetzen-E-Mail und der gesamte Inhalt aller uebrigen E-Mails. Muss zusaetzlich pro E-Mail aktiviert werden.', 'lotzapp-for-woocommerce') . '</p>';
             },
             $emails_page,
             'lotzwoo_emails'
@@ -827,15 +978,14 @@ foreach ($price_display_groups as $slug => $group) {
                 if (!groups.length) {
                     return;
                 }
-                groups.forEach(function(group, index){
+                groups.forEach(function(group){
                     var toggle = group.querySelector('.lotzwoo-field-group__toggle');
                     var content = group.querySelector('.lotzwoo-field-group__content');
                     if (!toggle || !content) {
                         return;
                     }
-                    var open = index === 0;
-                    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-                    content.hidden = !open;
+                    toggle.setAttribute('aria-expanded', 'false');
+                    content.hidden = true;
                     toggle.addEventListener('click', function(){
                         var isOpen = toggle.getAttribute('aria-expanded') === 'true';
                         if (isOpen) {
@@ -1004,6 +1154,22 @@ foreach ($price_display_groups as $slug => $group) {
         if (array_key_exists('menu_planning_show_backend_links', $input)) {
             $options['menu_planning_show_backend_links'] = !empty($input['menu_planning_show_backend_links']) ? 1 : 0;
         }
+        if (array_key_exists('menu_planning_mode', $input)) {
+            $options['menu_planning_mode'] = ((string) $input['menu_planning_mode']) === 'manual' ? 'manual' : 'auto';
+        }
+        if (array_key_exists('product_succession_enabled', $input)) {
+            $options['product_succession_enabled'] = !empty($input['product_succession_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('product_succession_same_category_only', $input)) {
+            $options['product_succession_same_category_only'] = !empty($input['product_succession_same_category_only']) ? 1 : 0;
+        }
+        if (array_key_exists('product_succession_unpaid_as_reserved', $input)) {
+            $hold_stock_minutes = trim((string) get_option('woocommerce_hold_stock_minutes', ''));
+            $options['product_succession_unpaid_as_reserved'] = $hold_stock_minutes !== '' && !empty($input['product_succession_unpaid_as_reserved']) ? 1 : 0;
+        }
+        if (array_key_exists('stock_notifications_enabled', $input)) {
+            $options['stock_notifications_enabled'] = !empty($input['stock_notifications_enabled']) ? 1 : 0;
+        }
         if (array_key_exists('deposit_enabled', $input)) {
             $options['deposit_enabled'] = !empty($input['deposit_enabled']) ? 1 : 0;
         }
@@ -1061,6 +1227,9 @@ foreach ($price_display_groups as $slug => $group) {
         }
         if (array_key_exists('emails_invoice_enabled', $input)) {
             $options['emails_invoice_enabled'] = !empty($input['emails_invoice_enabled']) ? 1 : 0;
+        }
+        if (array_key_exists('emails_advanced_editing_enabled', $input)) {
+            $options['emails_advanced_editing_enabled'] = !empty($input['emails_advanced_editing_enabled']) ? 1 : 0;
         }
         if (array_key_exists('emails_tracking_template', $input)) {
             $default_email_template = $this->default_email_tracking_template();
@@ -1784,23 +1953,23 @@ foreach ($price_display_groups as $slug => $group) {
                     $menu_planning_html = ltrim($menu_planning_html);
 
                     if ($heading_html === '') {
-                        $heading_html = '<h2>' . esc_html__('Menueplanung', 'lotzapp-for-woocommerce') . '</h2>';
+                        $heading_html = '<h2>' . esc_html__('Menüplanung', 'lotzapp-for-woocommerce') . '</h2>';
                     }
                     if ($intro_html === '') {
-                        $intro_html = '<p>' . esc_html__('Konfiguration der zentralen Menueplanung.', 'lotzapp-for-woocommerce') . '</p>';
+                        $intro_html = '<p>' . esc_html__('Steuert, wann vorbereitete Menüpläne aktiv werden und welche Produkte im Webshop als aktuelles Menü sichtbar sind.', 'lotzapp-for-woocommerce') . '</p>';
                     }
 
                     echo $heading_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                     echo $intro_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                     ?>
                     <fieldset class="lotzwoo-setting-toggle">
-                        <legend class="screen-reader-text"><?php esc_html_e('Menueplanung Optionen', 'lotzapp-for-woocommerce'); ?></legend>
+                        <legend class="screen-reader-text"><?php esc_html_e('Menüplanung Optionen', 'lotzapp-for-woocommerce'); ?></legend>
                         <label for="lotzwoo_menu_planning_enabled">
                             <input type="hidden" name="lotzwoo_options[menu_planning_enabled]" value="0" />
                             <input type="checkbox" id="lotzwoo_menu_planning_enabled" name="lotzwoo_options[menu_planning_enabled]" value="1" <?php checked($menu_planning_enabled); ?> />
-                            <?php esc_html_e('Menueplanung aktivieren', 'lotzapp-for-woocommerce'); ?>
+                            <?php esc_html_e('Menüplanung aktivieren', 'lotzapp-for-woocommerce'); ?>
                         </label>
-                        <p class="description"><?php esc_html_e('Schaltet alle Menueplanungs-Optionen dieses Plugins auf dieser Seite ein oder aus.', 'lotzapp-for-woocommerce'); ?></p>
+                        <p class="description"><?php esc_html_e('Schaltet Menüplaner, Terminlogik und Produktnachfolge-Einstellungen auf dieser Seite ein oder aus.', 'lotzapp-for-woocommerce'); ?></p>
                     </fieldset>
                     <div id="lotzwoo-menu-planning-settings" <?php echo $menu_planning_enabled ? '' : 'style="display:none;"'; ?>>
                         <?php echo $menu_planning_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
@@ -1825,6 +1994,25 @@ foreach ($price_display_groups as $slug => $group) {
                                     actionsContainer.style.display = 'none';
                                 }
                             }
+                        };
+                        checkbox.addEventListener('change', toggle);
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', toggle);
+                        } else {
+                            toggle();
+                        }
+                    })();
+                    (function() {
+                        var checkbox = document.getElementById('lotzwoo_product_succession_enabled');
+                        var dependentRows = document.querySelectorAll('.lotzwoo-product-succession-dependent');
+                        if (!checkbox || !dependentRows.length) {
+                            return;
+                        }
+                        var toggle = function () {
+                            var isActive = checkbox.checked && !checkbox.disabled;
+                            dependentRows.forEach(function (row) {
+                                row.style.display = isActive ? '' : 'none';
+                            });
                         };
                         checkbox.addEventListener('change', toggle);
                         if (document.readyState === 'loading') {
@@ -2293,10 +2481,3 @@ foreach ($price_display_groups as $slug => $group) {
         return (int) $post_id;
     }
 }
-
-
-
-
-
-
-

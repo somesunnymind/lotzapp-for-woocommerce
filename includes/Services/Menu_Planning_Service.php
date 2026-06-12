@@ -214,6 +214,161 @@ class Menu_Planning_Service
     }
 
     /**
+     * Replace a product only in the currently active menu plan payload.
+     *
+     * @param array<int, string> $tag_slugs
+     */
+    public function replace_product_in_current_entry(int $old_product_id, int $new_product_id, array $tag_slugs = []): bool
+    {
+        if ($old_product_id <= 0 || $new_product_id <= 0 || $old_product_id === $new_product_id) {
+            return false;
+        }
+
+        $current_id = $this->current_entry_id(new DateTimeImmutable('now', $this->get_timezone()));
+        if ($current_id <= 0) {
+            return false;
+        }
+
+        $entry = $this->find_entry($current_id);
+        if (!$entry) {
+            return false;
+        }
+
+        $payload = $this->decode_payload(isset($entry['payload']) ? (string) $entry['payload'] : '');
+        if (empty($payload)) {
+            return false;
+        }
+
+        $target_slugs = array_values(array_filter(array_map(static function ($slug) {
+            return is_string($slug) ? sanitize_title($slug) : '';
+        }, $tag_slugs)));
+        if (empty($target_slugs)) {
+            $target_slugs = array_keys($payload);
+        }
+
+        $changed = false;
+        foreach ($target_slugs as $tag_slug) {
+            if (!isset($payload[$tag_slug]) || !is_array($payload[$tag_slug])) {
+                continue;
+            }
+
+            $replaced_ids = [];
+            foreach ($payload[$tag_slug] as $product_id) {
+                $product_id = (int) $product_id;
+                $replaced_ids[] = $product_id === $old_product_id ? $new_product_id : $product_id;
+            }
+
+            $replaced_ids = array_values(array_unique(array_filter($replaced_ids)));
+            if ($replaced_ids !== $payload[$tag_slug]) {
+                $payload[$tag_slug] = $replaced_ids;
+                $changed = true;
+            }
+        }
+
+        if (!$changed) {
+            return false;
+        }
+
+        return $this->update_entry($current_id, ['payload' => $payload]);
+    }
+
+    /**
+     * Sync selected current menu columns from the actual currentmenu_* product tags.
+     *
+     * @param array<int, string> $tag_slugs
+     */
+    public function sync_current_entry_payload_from_terms(array $tag_slugs): bool
+    {
+        $target_slugs = array_values(array_filter(array_map(static function ($slug) {
+            return is_string($slug) ? sanitize_title($slug) : '';
+        }, $tag_slugs)));
+        if (empty($target_slugs)) {
+            return false;
+        }
+
+        $current_id = $this->current_entry_id(new DateTimeImmutable('now', $this->get_timezone()));
+        if ($current_id <= 0) {
+            return false;
+        }
+
+        $entry = $this->find_entry($current_id);
+        if (!$entry) {
+            return false;
+        }
+
+        $payload = $this->decode_payload(isset($entry['payload']) ? (string) $entry['payload'] : '');
+        $changed = false;
+
+        foreach ($target_slugs as $tag_slug) {
+            $term = get_term_by('slug', $tag_slug, 'product_tag');
+            if (!$term || is_wp_error($term)) {
+                continue;
+            }
+
+            $tag_product_ids = get_posts([
+                'post_type'        => 'product',
+                'post_status'      => ['publish', 'pending', 'draft', 'private'],
+                'numberposts'      => -1,
+                'fields'           => 'ids',
+                'tax_query'        => [
+                    [
+                        'taxonomy' => 'product_tag',
+                        'terms'    => [(int) $term->term_id],
+                        'operator' => 'IN',
+                    ],
+                ],
+                'suppress_filters' => false,
+            ]);
+
+            $actual_ids = is_array($tag_product_ids)
+                ? array_values(array_unique(array_map('intval', $tag_product_ids)))
+                : [];
+            $existing_ids = isset($payload[$tag_slug]) && is_array($payload[$tag_slug])
+                ? array_values(array_map('intval', $payload[$tag_slug]))
+                : [];
+
+            $ordered_ids = array_values(array_intersect($existing_ids, $actual_ids));
+            foreach ($actual_ids as $product_id) {
+                if (!in_array($product_id, $ordered_ids, true)) {
+                    $ordered_ids[] = $product_id;
+                }
+            }
+
+            if ($ordered_ids !== $existing_ids) {
+                $payload[$tag_slug] = $ordered_ids;
+                $changed = true;
+            }
+        }
+
+        if (!$changed) {
+            return false;
+        }
+
+        return $this->update_entry($current_id, ['payload' => $payload]);
+    }
+
+    public function sync_current_entry_payload_from_active_terms(): bool
+    {
+        $terms = get_terms([
+            'taxonomy'   => 'product_tag',
+            'hide_empty' => false,
+        ]);
+
+        if (!is_array($terms)) {
+            return false;
+        }
+
+        $tag_slugs = [];
+        foreach ($terms as $term) {
+            if (isset($term->slug) && strpos((string) $term->slug, 'currentmenu_') === 0) {
+                $tag_slugs[] = (string) $term->slug;
+            }
+        }
+
+        return $this->sync_current_entry_payload_from_terms($tag_slugs);
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function get_due_entries(DateTimeInterface $now, int $limit = 5): array
@@ -243,6 +398,17 @@ class Menu_Planning_Service
      */
     public function get_menu_tags(): array
     {
+        $current_payload = [];
+        if ($this->table_exists()) {
+            $current_id = $this->current_entry_id(new DateTimeImmutable('now', $this->get_timezone()));
+            if ($current_id > 0) {
+                $current_entry = $this->find_entry($current_id);
+                if ($current_entry) {
+                    $current_payload = $this->decode_payload(isset($current_entry['payload']) ? (string) $current_entry['payload'] : '');
+                }
+            }
+        }
+
         $terms = get_terms([
             'taxonomy'   => 'product_tag',
             'hide_empty' => false,
@@ -271,7 +437,7 @@ class Menu_Planning_Service
                 'name'             => (string) $term->name,
                 'category_slug'    => (string) $category_slug,
                 'category_term_id' => $category ? (int) $category->term_id : 0,
-                'products'         => $this->get_products_for_category($category_slug),
+                'products'         => $this->get_products_for_category($category_slug, $current_payload[(string) $term->slug] ?? []),
             ];
         }
 
@@ -298,6 +464,7 @@ class Menu_Planning_Service
         $display_local = $this->format_local_datetime($next_slot_local);
 
         return [
+            'mode'             => isset($schedule['mode']) ? (string) $schedule['mode'] : 'auto',
             'frequency'        => $schedule['frequency'],
             'frequency_display'=> $this->translate_frequency($schedule['frequency']),
             'weekday'          => $schedule['weekday'],
@@ -317,7 +484,7 @@ class Menu_Planning_Service
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function get_products_for_category(string $category_slug): array
+    private function get_products_for_category(string $category_slug, array $include_product_ids = []): array
     {
         if ($category_slug === '' || !function_exists('wc_get_products')) {
             return [];
@@ -336,34 +503,88 @@ class Menu_Planning_Service
         }
 
         $options = [];
+        $seen_product_ids = [];
         foreach ($products as $product) {
             if (!$product instanceof \WC_Product) {
                 continue;
             }
+            $seen_product_ids[(int) $product->get_id()] = true;
+            $options[] = $this->format_product_option($product);
+        }
 
-            $tags = [];
-            $product_terms = get_the_terms($product->get_id(), 'product_tag');
-            if (is_array($product_terms)) {
-                foreach ($product_terms as $term) {
-                    $tags[] = [
-                        'id'   => (int) $term->term_id,
-                        'slug' => (string) $term->slug,
-                        'name' => (string) $term->name,
-                    ];
-                }
+        foreach (array_filter(array_map('intval', $include_product_ids)) as $product_id) {
+            if (isset($seen_product_ids[$product_id])) {
+                continue;
             }
 
-            $options[] = [
-                'id'   => (int) $product->get_id(),
-                'name' => $product->get_name(),
-                'tags' => $tags,
-                'permalink' => get_permalink($product->get_id()) ?: '',
-                'edit_url'  => get_edit_post_link($product->get_id(), '') ?: '',
-                'sku'       => (string) $product->get_sku(),
-            ];
+            $product = wc_get_product($product_id);
+            if (!$product instanceof \WC_Product || $product->get_status() !== 'publish') {
+                continue;
+            }
+
+            $seen_product_ids[$product_id] = true;
+            $options[] = $this->format_product_option($product);
         }
 
         return $options;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function format_product_option(\WC_Product $product): array
+    {
+        $tags = [];
+        $product_terms = get_the_terms($product->get_id(), 'product_tag');
+        if (is_array($product_terms)) {
+            foreach ($product_terms as $term) {
+                $tags[] = [
+                    'id'   => (int) $term->term_id,
+                    'slug' => (string) $term->slug,
+                    'name' => (string) $term->name,
+                ];
+            }
+        }
+
+        $stock_quantity = $product->get_stock_quantity();
+        $stock_value    = $stock_quantity === null ? null : (int) $stock_quantity;
+
+        $successor_data = [
+            'has_successor'      => false,
+            'successor_id'       => 0,
+            'successor_name'     => '',
+            'successor_stock'    => null,
+            'successor_permalink'=> '',
+            'successor_edit_url' => '',
+        ];
+
+        if (Plugin::opt('product_succession_enabled')) {
+            $successor_id = (int) get_post_meta($product->get_id(), '_lotzwoo_successor_product_id', true);
+            if ($successor_id > 0) {
+                $successor = wc_get_product($successor_id);
+                if ($successor instanceof \WC_Product) {
+                    $successor_stock = $successor->get_stock_quantity();
+                    $successor_data = [
+                        'has_successor'       => true,
+                        'successor_id'        => (int) $successor->get_id(),
+                        'successor_name'      => (string) $successor->get_name(),
+                        'successor_stock'     => $successor_stock === null ? null : (int) $successor_stock,
+                        'successor_permalink' => get_permalink($successor->get_id()) ?: '',
+                        'successor_edit_url'  => get_edit_post_link($successor->get_id(), '') ?: '',
+                    ];
+                }
+            }
+        }
+
+        return array_merge([
+            'id'        => (int) $product->get_id(),
+            'name'      => $product->get_name(),
+            'tags'      => $tags,
+            'permalink' => get_permalink($product->get_id()) ?: '',
+            'edit_url'  => get_edit_post_link($product->get_id(), '') ?: '',
+            'sku'       => (string) $product->get_sku(),
+            'stock'     => $stock_value,
+        ], $successor_data);
     }
 
     /**

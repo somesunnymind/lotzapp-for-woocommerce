@@ -84,20 +84,20 @@ class Menu_Planning_Runner
         }
     }
 
-    public function run_entry(int $entry_id): bool
+    public function run_entry(int $entry_id, bool $force_now = false): bool
     {
         if (!$this->service->table_exists() || $this->is_locked()) {
             return false;
         }
 
         $entry = $this->service->find_entry($entry_id);
-        if (!$entry || !$this->is_entry_runnable($entry)) {
+        if (!$entry || (!$force_now && !$this->is_entry_runnable($entry)) || ($force_now && !$this->is_entry_manually_runnable($entry))) {
             return false;
         }
 
         $this->acquire_lock();
         try {
-            $this->process_entry($entry);
+            $this->process_entry($entry, $force_now);
         } finally {
             $this->release_lock();
         }
@@ -108,7 +108,7 @@ class Menu_Planning_Runner
     /**
      * @param array<string, mixed> $entry
      */
-    private function process_entry(array $entry): void
+    private function process_entry(array $entry, bool $force_now = false): void
     {
         $payload = $this->service->decode_payload($entry['payload'] ?? '');
 
@@ -116,12 +116,14 @@ class Menu_Planning_Runner
             $this->sync_tag_with_products((string) $tag_slug, (array) $product_ids);
         }
 
-        $this->service->update_entry(
-            (int) $entry['id'],
-            [
-                'status' => Menu_Planning_Service::STATUS_COMPLETED,
-            ]
-        );
+        $update_data = [
+            'status' => Menu_Planning_Service::STATUS_COMPLETED,
+        ];
+        if ($force_now) {
+            $update_data['scheduled_at'] = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        }
+
+        $this->service->update_entry((int) $entry['id'], $update_data);
     }
 
     /**
@@ -187,7 +189,7 @@ class Menu_Planning_Runner
      */
     private function is_entry_runnable(array $entry): bool
     {
-        if (!isset($entry['status']) || !in_array((string) $entry['status'], [Menu_Planning_Service::STATUS_PENDING, Menu_Planning_Service::STATUS_COMPLETED], true)) {
+        if (!$this->is_entry_manually_runnable($entry)) {
             return false;
         }
 
@@ -205,6 +207,14 @@ class Menu_Planning_Runner
         return $scheduled <= $now;
     }
 
+    /**
+     * @param array<string, mixed> $entry
+     */
+    private function is_entry_manually_runnable(array $entry): bool
+    {
+        return isset($entry['status']) && in_array((string) $entry['status'], [Menu_Planning_Service::STATUS_PENDING, Menu_Planning_Service::STATUS_COMPLETED], true);
+    }
+
     private function is_locked(): bool
     {
         return (bool) get_transient(self::LOCK_KEY);
@@ -220,7 +230,6 @@ class Menu_Planning_Runner
         delete_transient(self::LOCK_KEY);
     }
 }
-
 
 
 

@@ -9,6 +9,8 @@
     --lotzwoo_color-gray50: #e6e6e6;
     --lotzwoo_color-gray100: #d0d0d0;
     --lotzwoo_color-gray300: #a3a3a3;
+    --lotzwoo_color-gray500: #646970;
+    --lotzwoo_color-gray700: #3c434a;
     --lotzwoo_font-family: "Open Sans", "Karla", sans-serif;
 
     font-family: var(--lotzwoo_font-family);
@@ -108,7 +110,7 @@
     text-transform: uppercase;
     font-size: 0.8125rem;
     letter-spacing: 0.05em;
-    color: var(--lotzwoo_color-gray300);
+    color: var(--lotzwoo_color-gray500);
 }
 
 .lotzwoo_page table tbody tr:hover {

@@ -14,6 +14,7 @@ use Lotzwoo\Providers\Cron_Service_Provider;
 use Lotzwoo\Providers\Frontend_Service_Provider;
 use Lotzwoo\Providers\Service_Provider_Interface;
 use Lotzwoo\Providers\Shortcode_Service_Provider;
+use Lotzwoo\Providers\Stock_Service_Provider;
 use Lotzwoo\Services\Menu_Planning_Runner;
 use Lotzwoo\Services\Menu_Planning_Service;
 use Lotzwoo\Services\Product_Media_Service;
@@ -124,27 +125,35 @@ class Plugin
     }
 
     /**
-     * @return array{frequency:string,weekday:string,monthday:int,time:string}
+     * @return array{mode:string,frequency:string,weekday:string,monthday:int,time:string}
      */
     public static function menu_planning_schedule(): array
     {
         $defaults  = self::defaults();
+        $mode      = (string) self::opt('menu_planning_mode', $defaults['menu_planning_mode']);
         $frequency = (string) self::opt('menu_planning_frequency', $defaults['menu_planning_frequency']);
         $weekday   = (string) self::opt('menu_planning_weekday', $defaults['menu_planning_weekday']);
         $monthday  = (int) self::opt('menu_planning_monthday', $defaults['menu_planning_monthday']);
         $time      = (string) self::opt('menu_planning_time', $defaults['menu_planning_time']);
 
+        $mode      = $mode === 'manual' ? 'manual' : 'auto';
         $frequency = self::normalize_frequency($frequency, (string) $defaults['menu_planning_frequency']);
         $weekday   = self::normalize_weekday($weekday, (string) $defaults['menu_planning_weekday']);
         $monthday  = self::normalize_monthday($monthday, (int) $defaults['menu_planning_monthday']);
         $time      = self::normalize_time($time, (string) $defaults['menu_planning_time']);
 
         return [
+            'mode'      => $mode,
             'frequency' => $frequency,
             'weekday'   => $weekday,
             'monthday'  => $monthday,
             'time'      => $time,
         ];
+    }
+
+    public static function menu_planning_mode(): string
+    {
+        return self::menu_planning_schedule()['mode'];
     }
 
     public static function next_menu_planning_event(?DateTimeZone $timezone = null, ?DateTimeImmutable $reference = null): DateTimeImmutable
@@ -260,6 +269,7 @@ class Plugin
             new Admin_Service_Provider(),
             new Frontend_Service_Provider(),
             new Cron_Service_Provider(),
+            new Stock_Service_Provider(),
         ];
 
         foreach ($this->providers as $provider) {

@@ -45,6 +45,15 @@ class Menu_Planning
         $style_src  = trailingslashit(LOTZWOO_PLUGIN_URL) . 'assets/css/menu-planning.css';
         $base_style_handle = $this->enqueue_base_style();
 
+        // Cache-bust by file mtime so browsers pick up edits without a hard
+        // reload (the hardcoded versions would otherwise keep serving cached JS).
+        $script_fs = trailingslashit(LOTZWOO_PLUGIN_DIR) . 'assets/js/menu-planning.js';
+        $style_fs  = trailingslashit(LOTZWOO_PLUGIN_DIR) . 'assets/css/menu-planning.css';
+        $dnd_fs    = trailingslashit(LOTZWOO_PLUGIN_DIR) . 'assets/js/menu-planning-dnd.js';
+        $script_version = file_exists($script_fs) ? (string) filemtime($script_fs) : '0.1.0';
+        $style_version  = file_exists($style_fs) ? (string) filemtime($style_fs) : '0.1.0';
+        $dnd_version    = file_exists($dnd_fs) ? (string) filemtime($dnd_fs) : '0.1.0';
+
         if (!wp_script_is(self::LIB_SCRIPT_HANDLE, 'registered')) {
             wp_register_script(
                 self::LIB_SCRIPT_HANDLE,
@@ -69,7 +78,7 @@ class Menu_Planning
                 $script_handle,
                 $script_src,
                 [self::LIB_SCRIPT_HANDLE],
-                '0.1.0',
+                $script_version,
                 true
             );
         }
@@ -79,7 +88,7 @@ class Menu_Planning
                 self::DND_SCRIPT_HANDLE,
                 trailingslashit(LOTZWOO_PLUGIN_URL) . 'assets/js/menu-planning-dnd.js',
                 [$script_handle],
-                '0.1.0',
+                $dnd_version,
                 true
             );
         }
@@ -89,7 +98,7 @@ class Menu_Planning
                 $style_handle,
                 $style_src,
                 [$base_style_handle],
-                '0.1.0'
+                $style_version
             );
         }
 
@@ -109,7 +118,7 @@ class Menu_Planning
                     'remove'                  => __('Termin entfernen', 'lotzapp-for-woocommerce'),
                     'loading'                 => __("Lade Men\u{00FC}planung \u{2026}", 'lotzapp-for-woocommerce'),
                     'empty'                   => __("Noch keine Men\u{00FC}plan-Eintr\u{00E4}ge vorhanden.", 'lotzapp-for-woocommerce'),
-                    'timeColumn'              => __('Zeitpunkt', 'lotzapp-for-woocommerce'),
+                    'timeColumn'              => __('Menüplan aktiv ab', 'lotzapp-for-woocommerce'),
                     'actionsColumn'           => __('Aktionen', 'lotzapp-for-woocommerce'),
                     'statusColumn'            => __('Status', 'lotzapp-for-woocommerce'),
                     'assignmentsColumn'       => __('Zuordnungen', 'lotzapp-for-woocommerce'),
@@ -122,11 +131,12 @@ class Menu_Planning
                     'confirmRemove'           => __('Diesen Termin wirklich entfernen?', 'lotzapp-for-woocommerce'),
                     'noProducts'              => __('Keine passenden Produkte vorhanden.', 'lotzapp-for-woocommerce'),
                     'addProduct'              => __("Produkt hinzuf\u{00FC}gen", 'lotzapp-for-woocommerce'),
-                    'tabCurrent'              => __("Aktuelle & geplante Men\u{00FC}pl\u{00E4}ne", 'lotzapp-for-woocommerce'),
-                    'tabHistory'              => __("Vergangene Men\u{00FC}pl\u{00E4}ne", 'lotzapp-for-woocommerce'),
+                    'tabCurrent'              => __('Aktiv & geplant', 'lotzapp-for-woocommerce'),
+                    'tabHistory'              => __('Abgeschlossen', 'lotzapp-for-woocommerce'),
                     'historyEmpty'            => __("Keine vergangenen Men\u{00FC}pl\u{00E4}ne vorhanden.", 'lotzapp-for-woocommerce'),
                     'historyAssignmentsEmpty' => __('Keine Produktzuordnungen gespeichert.', 'lotzapp-for-woocommerce'),
                     'applyNow'                => __("\u{00C4}nderungen jetzt anwenden", 'lotzapp-for-woocommerce'),
+                    'activateNow'             => __('Jetzt aktivieren', 'lotzapp-for-woocommerce'),
                     'applyingNow'             => __("\u{00C4}nderungen werden angewendet \u{2026}", 'lotzapp-for-woocommerce'),
                     'countdownRemaining'      => __('Noch %s', 'lotzapp-for-woocommerce'),
                     'countdownIn'             => __('In %s', 'lotzapp-for-woocommerce'),
@@ -136,6 +146,24 @@ class Menu_Planning
                     'editProduct'             => __('Bearbeiten', 'lotzapp-for-woocommerce'),
                     'skuLabel'                => __('LotzApp-ID: %s', 'lotzapp-for-woocommerce'),
                     'skuMissing'              => __('fehlt', 'lotzapp-for-woocommerce'),
+                    'dialogCreateTitle'       => __('Neuen Menüplan anlegen', 'lotzapp-for-woocommerce'),
+                    'dialogEditTitle'         => __('Menüplan bearbeiten', 'lotzapp-for-woocommerce'),
+                    'dialogDuplicateTitle'    => __('Menüplan duplizieren', 'lotzapp-for-woocommerce'),
+                    'dialogDateLabel'         => __('Datum', 'lotzapp-for-woocommerce'),
+                    'dialogTimeLabel'         => __('Uhrzeit', 'lotzapp-for-woocommerce'),
+                    'dialogCancel'            => __('Abbrechen', 'lotzapp-for-woocommerce'),
+                    'dialogConfirmCreate'     => __('Anlegen', 'lotzapp-for-woocommerce'),
+                    'dialogConfirmSave'       => __('Speichern', 'lotzapp-for-woocommerce'),
+                    'dialogConfirmSaveApply'  => __('Speichern und jetzt anwenden', 'lotzapp-for-woocommerce'),
+                    'dialogValidationMissing' => __('Bitte Datum und Uhrzeit angeben.', 'lotzapp-for-woocommerce'),
+                    'dialogValidationPast'    => __('Bitte einen Zeitpunkt ab jetzt waehlen.', 'lotzapp-for-woocommerce'),
+                    'editAction'              => __('Bearbeiten', 'lotzapp-for-woocommerce'),
+                    'editActionLabel'         => __('Menüplan bearbeiten', 'lotzapp-for-woocommerce'),
+                    'duplicateAction'         => __('Duplizieren', 'lotzapp-for-woocommerce'),
+                    'nextSlotLabel'           => __('Nächster Termin', 'lotzapp-for-woocommerce'),
+                    'stockLabel'              => __('Lagerstand', 'lotzapp-for-woocommerce'),
+                    'successorLabel'          => __('Nachfolgeprodukt', 'lotzapp-for-woocommerce'),
+                    'successorIndicator'      => __('Nachfolgeprodukt definiert', 'lotzapp-for-woocommerce'),
                 ],
             ]
         );
@@ -166,4 +194,3 @@ class Menu_Planning
         return $handle;
     }
 }
-

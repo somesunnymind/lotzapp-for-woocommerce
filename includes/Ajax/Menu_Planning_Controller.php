@@ -49,6 +49,8 @@ class Menu_Planning_Controller
             ]);
         }
 
+        $this->service->sync_current_entry_payload_from_active_terms();
+
         $fetch_limit = $limit + 60;
         $entries_raw = $this->service->get_entries($fetch_limit, $offset);
         $entries     = array_map([$this->service, 'format_entry'], $entries_raw);
@@ -67,27 +69,47 @@ class Menu_Planning_Controller
         $this->guard_request();
 
         if (!$this->service->table_exists()) {
-            wp_send_json_error(['message' => __('Men�planungstabelle nicht vorhanden.', 'lotzapp-for-woocommerce')], 500);
+            wp_send_json_error(['message' => __('Menüplanungstabelle nicht vorhanden.', 'lotzapp-for-woocommerce')], 500);
         }
 
         $timezone = $this->service->get_timezone();
         $now      = new DateTimeImmutable('now', $timezone);
+        $now_minute = $now->setTime((int) $now->format('H'), (int) $now->format('i'), 0);
 
-        if ($this->service->has_any_entry()) {
-            $existing  = $this->service->get_scheduled_slots();
-            $next_slot = $this->service->next_open_slot($existing);
-        } else {
-            $next_slot = $now;
+        // Caller may supply an explicit scheduled_at (popup dialog). When absent
+        // we fall back to the legacy auto-slot calculation -- BUT only in auto
+        // mode; in manual mode every entry must carry an explicit timestamp.
+        $scheduled_at_input = isset($_POST['scheduled_at']) ? (string) wp_unslash($_POST['scheduled_at']) : '';
+        $scheduled_at = $this->parse_user_datetime($scheduled_at_input, $timezone);
+        if ($scheduled_at instanceof DateTimeImmutable && $scheduled_at < $now_minute) {
+            wp_send_json_error(['message' => __('Bitte einen Zeitpunkt ab jetzt waehlen.', 'lotzapp-for-woocommerce')], 400);
         }
+
+        if ($scheduled_at === null) {
+            if (\Lotzwoo\Plugin::menu_planning_mode() === 'manual') {
+                wp_send_json_error([
+                    'message' => __('Im manuellen Modus muss Datum und Uhrzeit gesetzt werden.', 'lotzapp-for-woocommerce'),
+                ], 400);
+            }
+
+            if ($this->service->has_any_entry()) {
+                $existing     = $this->service->get_scheduled_slots();
+                $scheduled_at = $this->service->next_open_slot($existing);
+            } else {
+                $scheduled_at = $now;
+            }
+        }
+
         $payload = $this->sanitize_payload(isset($_POST['payload']) ? wp_unslash($_POST['payload']) : null);
 
-        $entry_id = $this->service->insert_entry($next_slot, $payload);
+        $entry_id = $this->service->insert_entry($scheduled_at, $payload);
         if (!$entry_id) {
-            wp_send_json_error(['message' => __('Men�plan konnte nicht angelegt werden.', 'lotzapp-for-woocommerce')], 500);
+            wp_send_json_error(['message' => __('Menüplan konnte nicht angelegt werden.', 'lotzapp-for-woocommerce')], 500);
         }
 
         wp_send_json_success([
             'schedule' => $this->service->get_schedule_snapshot(),
+            'id'       => $entry_id,
         ]);
     }
     public function handle_update(): void
@@ -111,12 +133,28 @@ class Menu_Planning_Controller
 
         $status = isset($_POST['status']) ? sanitize_key((string) wp_unslash($_POST['status'])) : null;
 
+        $scheduled_at_input = isset($_POST['scheduled_at']) ? (string) wp_unslash($_POST['scheduled_at']) : '';
+        $timezone           = $this->service->get_timezone();
+        $scheduled_at       = $scheduled_at_input !== ''
+            ? $this->parse_user_datetime($scheduled_at_input, $timezone)
+            : null;
+        $now                = new DateTimeImmutable('now', $timezone);
+        $now_minute         = $now->setTime((int) $now->format('H'), (int) $now->format('i'), 0);
+        if ($scheduled_at instanceof DateTimeImmutable && $scheduled_at < $now_minute) {
+            wp_send_json_error(['message' => __('Bitte einen Zeitpunkt ab jetzt waehlen.', 'lotzapp-for-woocommerce')], 400);
+        }
+
+        $apply_now = !empty($_POST['apply_now']) && (string) $_POST['apply_now'] !== '0';
+
         $update_data = [];
         if ($payload !== null) {
             $update_data['payload'] = $payload;
         }
         if ($status) {
             $update_data['status'] = $status;
+        }
+        if ($scheduled_at instanceof DateTimeImmutable) {
+            $update_data['scheduled_at'] = $scheduled_at;
         }
 
         if (empty($update_data)) {
@@ -127,7 +165,13 @@ class Menu_Planning_Controller
             wp_send_json_error(['message' => __('Eintrag konnte nicht aktualisiert werden.', 'lotzapp-for-woocommerce')], 500);
         }
 
-        wp_send_json_success();
+        if ($apply_now && !$this->runner->run_entry($id, true)) {
+            wp_send_json_error(['message' => __('Der Menüplan konnte noch nicht angewendet werden. Bitte überprüfe den Zeitpunkt und versuche es erneut.', 'lotzapp-for-woocommerce')], 400);
+        }
+
+        wp_send_json_success([
+            'schedule' => $this->service->get_schedule_snapshot(),
+        ]);
     }
 
     public function handle_delete(): void
@@ -169,7 +213,7 @@ class Menu_Planning_Controller
             }
         }
 
-        if (!$this->runner->run_entry($id)) {
+        if (!$this->runner->run_entry($id, true)) {
             wp_send_json_error(['message' => __('Der Menüplan konnte noch nicht angewendet werden. Bitte überprüfe den Zeitpunkt und versuche es erneut.', 'lotzapp-for-woocommerce')], 400);
         }
 
@@ -185,6 +229,26 @@ class Menu_Planning_Controller
         }
 
         check_ajax_referer(self::NONCE_ACTION, 'nonce');
+    }
+
+    /**
+     * Parse a user-supplied date/time string in the site's local timezone.
+     * Accepts ISO-ish or "Y-m-d H:i" / "Y-m-d\TH:i" pairs from <input type="date"> + time.
+     * Returns null if the value is empty or unparseable so callers can fall back.
+     */
+    private function parse_user_datetime(string $input, \DateTimeZone $timezone): ?DateTimeImmutable
+    {
+        $input = trim($input);
+        if ($input === '') {
+            return null;
+        }
+
+        $normalized = str_replace('T', ' ', $input);
+        try {
+            return new DateTimeImmutable($normalized, $timezone);
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     /**

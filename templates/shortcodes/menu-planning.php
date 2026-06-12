@@ -19,6 +19,9 @@ $initial_json = wp_json_encode($initial_state);
                 <?php esc_html_e('Verwalte hier die zukünftigen Menüpläne. Jede Tabellenzeile entspricht einem geplanten Veröffentlichungszeitpunkt, an dem die ausgewählten Produkte automatisch mit den jeweiligen "currentmenu_"-Schlagwörtern versehen werden.', 'lotzapp-for-woocommerce'); ?>
             </p>
             <p>
+                <?php esc_html_e('Wenn ein Produkt im aktiven Menüplan durch ein Nachfolgeprodukt ersetzt wird, aktualisiert LotzApp nur den aktuell aktiven Menüplan. Zukünftig gespeicherte Menüpläne bleiben unverändert.', 'lotzapp-for-woocommerce'); ?>
+            </p>
+            <p>
                 <?php esc_html_e('Hinweis: Die Dropdowns zeigen nur Produkte aus der Kategorie, deren Slug dem Schlagwort (ohne Prefix "currentmenu_") entspricht. Beispiel: "currentmenu_hauptspeise_mild" und "currentmenu_hauptspeise_meaty" nutzen beide die Kategorie "hauptspeise".', 'lotzapp-for-woocommerce'); ?>
             </p>
         </div>
