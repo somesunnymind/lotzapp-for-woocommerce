@@ -353,14 +353,7 @@ class GitHub_Updater
             return null;
         }
 
-        $package = !empty($response['zipball_url'])
-            ? (string) $response['zipball_url']
-            : sprintf(
-                'https://github.com/%s/%s/archive/refs/tags/%s.zip',
-                rawurlencode($this->owner),
-                rawurlencode($this->repository),
-                rawurlencode((string) $response['tag_name'])
-            );
+        $package = $this->get_release_package_url($response);
 
         $plugin_data = $this->get_plugin_data();
         $readme = $this->get_readme_header();
@@ -379,6 +372,45 @@ class GitHub_Updater
             'requires' => $requires,
             'homepage' => $homepage,
         ];
+    }
+
+    /**
+     * Prefer a purpose-built release asset over GitHub's generated source zip.
+     * GitHub source zips unpack into owner-repository-hash folders, which breaks
+     * WordPress' active plugin path during updates.
+     *
+     * @param array<string, mixed> $response
+     */
+    private function get_release_package_url(array $response): string
+    {
+        $expected_names = array_unique([
+            $this->slug . '.zip',
+            $this->repository . '.zip',
+        ]);
+
+        foreach ((array) ($response['assets'] ?? []) as $asset) {
+            if (!is_array($asset)) {
+                continue;
+            }
+
+            $asset_name = (string) ($asset['name'] ?? '');
+            $download_url = (string) ($asset['browser_download_url'] ?? '');
+
+            if ($download_url !== '' && in_array($asset_name, $expected_names, true)) {
+                return $download_url;
+            }
+        }
+
+        if (!empty($response['zipball_url'])) {
+            return (string) $response['zipball_url'];
+        }
+
+        return sprintf(
+            'https://github.com/%s/%s/archive/refs/tags/%s.zip',
+            rawurlencode($this->owner),
+            rawurlencode($this->repository),
+            rawurlencode((string) $response['tag_name'])
+        );
     }
 
     /**

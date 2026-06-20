@@ -174,6 +174,8 @@ class Successor_Product_Field
     public function save_quick_edit_field(\WC_Product $product): void
     {
         $this->save_field($product);
+        $product->save_meta_data();
+        clean_post_cache((int) $product->get_id());
     }
 
     public function add_quick_edit_row_data(string $column, int $post_id): void
