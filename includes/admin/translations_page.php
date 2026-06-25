@@ -29,23 +29,20 @@ class Translations_Page
 
     public function __construct()
     {
-        add_action('admin_menu', [$this, 'add_menu']);
         add_action('admin_post_' . self::ADMIN_ACTION, [$this, 'handle_generate']);
     }
 
-    public function add_menu(): void
+    public function render(): void
     {
-        add_submenu_page(
-            'woocommerce',
-            __('LotzApp Übersetzungen', 'lotzapp-for-woocommerce'),
-            __('LotzApp Übersetzungen', 'lotzapp-for-woocommerce'),
-            'manage_woocommerce',
-            self::MENU_SLUG,
-            [$this, 'render']
-        );
+        $this->render_content(true);
     }
 
-    public function render(): void
+    public function render_tab(): void
+    {
+        $this->render_content(false);
+    }
+
+    private function render_content(bool $standalone): void
     {
         if (!current_user_can('manage_woocommerce')) {
             wp_die(esc_html__('Keine Berechtigung.', 'lotzapp-for-woocommerce'));
@@ -56,8 +53,12 @@ class Translations_Page
         $languages = $this->target_languages();
         $flash     = $this->flash_notice();
 
-        echo '<div class="wrap">';
-        echo '<h1>' . esc_html__('LotzApp – Übersetzungen', 'lotzapp-for-woocommerce') . '</h1>';
+        if ($standalone) {
+            echo '<div class="wrap">';
+            echo '<h1>' . esc_html__('LotzApp - Uebersetzungen', 'lotzapp-for-woocommerce') . '</h1>';
+        } else {
+            echo '<h2 style="margin-top:18px;">' . esc_html__('TranslatePress', 'lotzapp-for-woocommerce') . '</h2>';
+        }
 
         if ($flash !== null) {
             printf(
@@ -92,39 +93,19 @@ class Translations_Page
             echo '<div class="notice notice-warning inline"><p>' .
                 esc_html__('Es sind keine Zielsprachen in TranslatePress konfiguriert. Füge sie unter Einstellungen → TranslatePress → Allgemein → Übersetzungssprachen hinzu — dann erscheinen sie hier.', 'lotzapp-for-woocommerce') .
                 '</p></div>';
-            echo '</div>';
+            if ($standalone) {
+                echo '</div>';
+            }
             return;
         }
 
-        // Scope selector: plugin UI (default) OR one specific email's custom content.
-        $scope         = $this->current_scope();
-        $email_choices = (new Email_Content_Extractor())->emails_with_content();
-        $scope_label   = $this->scope_label($scope, $email_choices);
-
-        echo '<form method="get" action="' . esc_url(admin_url('admin.php')) . '" style="margin:14px 0;">';
-        echo '<input type="hidden" name="page" value="' . esc_attr(self::MENU_SLUG) . '" />';
-        echo '<label><strong>' . esc_html__('Bereich:', 'lotzapp-for-woocommerce') . '</strong> </label>';
-        echo '<select name="scope" onchange="this.form.submit()" style="min-width:320px;">';
-        echo '<option value="ui"' . selected($scope, 'ui', false) . '>'
-            . esc_html__('Plugin-UI (alle Texte des Plugins)', 'lotzapp-for-woocommerce') . '</option>';
-        foreach ($email_choices as $id => $title) {
-            $val = 'email:' . $id;
-            echo '<option value="' . esc_attr($val) . '"' . selected($scope, $val, false) . '>'
-                . esc_html(sprintf(__('E-Mail: %s', 'lotzapp-for-woocommerce'), $title))
-                . '</option>';
-        }
-        echo '</select>';
-        echo ' <noscript><button type="submit" class="button">' . esc_html__('Übernehmen', 'lotzapp-for-woocommerce') . '</button></noscript>';
-        echo '</form>';
-
-        if (empty($email_choices)) {
-            echo '<p class="description">' . esc_html__('Hinweis: Sobald eine E-Mail eigene LotzApp-Inhalte enthält (Begrüßung/Einleitung/Body etc.), erscheint sie hier zur Auswahl.', 'lotzapp-for-woocommerce') . '</p>';
-        }
-
-        // MT engine is optional: without it, Generate still writes .po/.mo with
-        // empty msgstrs so Loco can fill them. So only require TP to be active.
         $can_generate = $tp['active'];
 
+        $scope       = 'ui';
+        $scope_label = __('Übersetzungsdateien für LotzApp for WooCommerce', 'lotzapp-for-woocommerce');
+
+        // The main plugin translation file intentionally includes all relevant
+        // plugin strings plus custom WooCommerce email content.
         echo '<h2 style="margin-top:18px;">' . esc_html($scope_label) . '</h2>';
 
         echo '<table class="widefat striped" style="max-width:980px;"><thead><tr>';
@@ -136,20 +117,19 @@ class Translations_Page
         foreach ($languages as $locale => $label) {
             echo '<tr>';
             echo '<td><strong>' . esc_html($label) . '</strong> <code>' . esc_html($locale) . '</code></td>';
-            echo '<td>' . esc_html($this->po_file_status_for_scope($scope, $locale)) . '</td>';
+            echo '<td>' . esc_html($this->po_file_status($locale)) . '</td>';
             echo '<td>';
             echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:inline;">';
             echo '<input type="hidden" name="action" value="' . esc_attr(self::ADMIN_ACTION) . '" />';
             echo '<input type="hidden" name="locale" value="' . esc_attr($locale) . '" />';
-            echo '<input type="hidden" name="scope" value="' . esc_attr($scope) . '" />';
             wp_nonce_field(self::NONCE_ACTION);
             $extra = $can_generate ? '' : 'disabled="disabled"';
             submit_button(__('Generieren', 'lotzapp-for-woocommerce'), 'primary small', 'submit', false, $extra);
             echo '</form>';
 
-            $loco_url = $this->loco_url_for($locale, $scope);
+            $loco_url = $this->loco_url_for($locale);
             if ($loco_url !== '') {
-                echo ' <a class="button button-secondary" href="' . esc_url($loco_url) . '">'
+                echo ' <a class="button button-secondary button-small" href="' . esc_url($loco_url) . '">'
                     . esc_html__('In Loco öffnen', 'lotzapp-for-woocommerce') . '</a>';
             }
             echo '</td>';
@@ -158,10 +138,12 @@ class Translations_Page
 
         echo '</tbody></table>';
         echo '<p class="description"><strong>' . esc_html__('Workflow:', 'lotzapp-for-woocommerce') . '</strong> '
-            . esc_html__('1. Klicke „Generieren" für die gewünschte Sprache — alle Plugin-Strings werden nach wp-content/languages/plugins/ als .po + .mo geschrieben. 2. Klicke „In Loco öffnen" — Loco zeigt die LotzApp-Übersetzungsdateien. 3. Klicke in Loco auf die Zeile deiner Sprache (z. B. „English (UK)") — der Editor öffnet sich, übersetze die Strings und speichere. Loco schreibt direkt in dieselbe Datei. Beim nächsten „Generieren" werden deine manuellen Übersetzungen automatisch beibehalten.', 'lotzapp-for-woocommerce')
+            . esc_html__('1. Klicke „Generieren" für die gewünschte Sprache — alle Plugin-Strings sowie eigene WooCommerce-E-Mail-Betreffzeilen, -Überschriften und LotzApp-Mailtexte werden nach wp-content/languages/plugins/ als .po + .mo geschrieben. 2. Klicke „In Loco öffnen" — Loco zeigt die LotzApp-Übersetzungsdateien. 3. Klicke in Loco auf die Zeile deiner Sprache (z. B. „English (UK)") — der Editor öffnet sich, übersetze die Strings und speichere. Loco schreibt direkt in dieselbe Datei. Beim nächsten „Generieren" werden deine manuellen Übersetzungen automatisch beibehalten.', 'lotzapp-for-woocommerce')
             . '</p>';
 
-        echo '</div>';
+        if ($standalone) {
+            echo '</div>';
+        }
     }
 
     public function handle_generate(): void
@@ -177,17 +159,13 @@ class Translations_Page
             return;
         }
 
-        $scope    = $this->parse_scope_post();
-        $basename = $this->file_basename_for_scope($scope);
+        $scope    = 'ui';
+        $basename = 'lotzapp-for-woocommerce';
 
         try {
-            // 1. Collect source entries for the chosen scope.
-            if (str_starts_with($scope, 'email:')) {
-                $email_id = substr($scope, 6);
-                $entries  = (new Email_Content_Extractor())->extract($email_id);
-            } else {
-                $entries = (new String_Scanner())->scan(LOTZWOO_PLUGIN_DIR);
-            }
+            // 1. Collect all relevant plugin and custom WooCommerce email strings.
+            $entries = (new String_Scanner())->scan(LOTZWOO_PLUGIN_DIR);
+            $entries = $this->merge_all_email_content_entries($entries);
             $total = count($entries);
             if ($total === 0) {
                 $this->redirect_back('empty', $locale, [], $scope);
@@ -269,11 +247,40 @@ class Translations_Page
     }
 
     /**
+     * Add custom WooCommerce email subject/heading/body strings to the main
+     * plugin translation file as a convenience for Loco Translate users.
+     *
+     * @param array<string, array{msgid:string, msgid_plural:?string, msgctxt:?string, refs:string[]}> $entries
+     * @return array<string, array{msgid:string, msgid_plural:?string, msgctxt:?string, refs:string[]}>
+     */
+    private function merge_all_email_content_entries(array $entries): array
+    {
+        $extractor = new Email_Content_Extractor();
+        foreach ($extractor->emails_with_content() as $email_id => $_title) {
+            foreach ($extractor->extract($email_id) as $_field => $entry) {
+                $key = ($entry['msgctxt'] !== null ? $entry['msgctxt'] . "\x04" : '') . $entry['msgid'];
+                if (!isset($entries[$key])) {
+                    $entries[$key] = $entry;
+                    continue;
+                }
+
+                foreach ($entry['refs'] as $ref) {
+                    if (!in_array($ref, $entries[$key]['refs'], true)) {
+                        $entries[$key]['refs'][] = $ref;
+                    }
+                }
+            }
+        }
+
+        ksort($entries);
+        return $entries;
+    }
+    /**
      * @param array{total?:int, translated?:int, preserved?:int, error?:string} $extras
      */
     private function redirect_back(string $msg, string $locale = '', array $extras = [], string $scope = 'ui'): void
     {
-        $args = ['page' => self::MENU_SLUG, 'lotzwoo_msg' => $msg, 'scope' => $scope];
+        $args = ['page' => 'lotzwoo-settings', 'tab' => 'translatepress', 'lotzwoo_msg' => $msg];
         if ($locale !== '') {
             $args['locale'] = $locale;
         }
@@ -420,69 +427,56 @@ class Translations_Page
         ];
     }
 
-    /** Parse and validate the scope param from a GET request (renders page). */
-    private function current_scope(): string
+    private function po_file_status(string $locale): string
     {
-        $s = isset($_GET['scope']) ? sanitize_text_field(wp_unslash($_GET['scope'])) : 'ui'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        return $this->normalize_scope($s);
-    }
-
-    /** Parse and validate the scope param from a POST (admin-post handler). */
-    private function parse_scope_post(): string
-    {
-        $s = isset($_POST['scope']) ? sanitize_text_field(wp_unslash($_POST['scope'])) : 'ui';
-        return $this->normalize_scope($s);
-    }
-
-    private function normalize_scope(string $scope): string
-    {
-        if ($scope === 'ui') return 'ui';
-        if (str_starts_with($scope, 'email:')) {
-            $id = substr($scope, 6);
-            if (preg_match('/^[a-z0-9_]+$/i', $id)) {
-                return 'email:' . $id;
-            }
-        }
-        return 'ui';
-    }
-
-    /** Filename prefix (no locale, no extension) for the given scope. */
-    private function file_basename_for_scope(string $scope): string
-    {
-        if (str_starts_with($scope, 'email:')) {
-            return 'lotzapp-email-' . substr($scope, 6);
-        }
-        return 'lotzapp-for-woocommerce';
-    }
-
-    /** @param array<string,string> $email_choices */
-    private function scope_label(string $scope, array $email_choices): string
-    {
-        if (str_starts_with($scope, 'email:')) {
-            $id    = substr($scope, 6);
-            $title = $email_choices[$id] ?? $id;
-            return sprintf(__('Übersetzungsdateien für E-Mail: %s', 'lotzapp-for-woocommerce'), $title);
-        }
-        return __('Übersetzungsdateien für die Plugin-UI', 'lotzapp-for-woocommerce');
-    }
-
-    private function po_file_status_for_scope(string $scope, string $locale): string
-    {
-        $base = $this->file_basename_for_scope($scope);
+        $base = 'lotzapp-for-woocommerce';
         $paths = [
-            trailingslashit(WP_LANG_DIR) . 'plugins/' . $base . '-' . $locale . '.mo',
-            LOTZWOO_PLUGIN_DIR . 'languages/' . $base . '-' . $locale . '.mo',
+            trailingslashit(WP_LANG_DIR) . 'plugins/' . $base . '-' . $locale,
+            LOTZWOO_PLUGIN_DIR . 'languages/' . $base . '-' . $locale,
         ];
-        foreach ($paths as $f) {
-            if (file_exists($f)) {
-                return sprintf(__('vorhanden (%s)', 'lotzapp-for-woocommerce'), size_format((int) filesize($f)));
+
+        foreach ($paths as $base_path) {
+            $mo_path = $base_path . '.mo';
+            $po_path = $base_path . '.po';
+            if (!file_exists($mo_path) && !file_exists($po_path)) {
+                continue;
             }
+
+            $size_path = file_exists($mo_path) ? $mo_path : $po_path;
+            $count     = file_exists($po_path) ? $this->count_po_strings($po_path) : 0;
+            $size      = size_format((int) filesize($size_path));
+
+            if ($count > 0) {
+                return sprintf(
+                    /* translators: 1: file size, 2: string count */
+                    __('vorhanden (%1$s, %2$d Strings)', 'lotzapp-for-woocommerce'),
+                    $size,
+                    $count
+                );
+            }
+
+            return sprintf(__('vorhanden (%s)', 'lotzapp-for-woocommerce'), $size);
         }
+
         return __('nicht generiert', 'lotzapp-for-woocommerce');
     }
 
+    private function count_po_strings(string $path): int
+    {
+        $content = @file_get_contents($path);
+        if (!is_string($content) || $content === '') {
+            return 0;
+        }
+
+        preg_match_all('/^msgid\s+"/m', $content, $matches);
+        $count = isset($matches[0]) ? count($matches[0]) : 0;
+
+        // Exclude the PO header entry: msgid "".
+        return max(0, $count - 1);
+    }
+
     /**
-     * Build a deep-link into Loco Translate for a specific locale + scope.
+     * Build a deep-link into Loco Translate for a specific locale.
      *
      * - If the target .po file exists, link straight to Loco's file-edit view
      *   for that file (bundle + domain + path) — the per-language editor for
@@ -498,7 +492,7 @@ class Translations_Page
      * not just the directory slug — passing the slug alone yields
      * "Plugin nicht gefunden".
      */
-    private function loco_url_for(string $locale, string $scope = 'ui'): string
+    private function loco_url_for(string $locale): string
     {
         if (!class_exists('Loco_mvc_AdminRouter') || !method_exists('Loco_mvc_AdminRouter', 'generate')) {
             return '';
@@ -508,11 +502,8 @@ class Translations_Page
             ? plugin_basename(LOTZWOO_PLUGIN_FILE)
             : 'lotzapp-for-woocommerce/lotzapp-for-woocommerce.php';
 
-        // Per-scope text domain + file paths.
-        $domain = str_starts_with($scope, 'email:')
-            ? 'lotzapp-email-' . substr($scope, 6)
-            : 'lotzapp-for-woocommerce';
-        $basename   = $this->file_basename_for_scope($scope);
+        $domain    = 'lotzapp-for-woocommerce';
+        $basename  = 'lotzapp-for-woocommerce';
         // Path param is relative to WP_CONTENT_DIR (no leading "wp-content/"),
         // because Loco's BaseController calls $file->normalize(WP_CONTENT_DIR)
         // which prepends the base; including "wp-content/" doubles the prefix.

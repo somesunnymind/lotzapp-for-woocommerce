@@ -113,6 +113,7 @@ class Advanced_Editor
         // when no theme overrides the template.
         add_filter('wc_get_template', [$this, 'override_reset_password_template'], 10, 5);
         add_filter('wc_get_template', [$this, 'override_new_account_template'], 10, 5);
+        add_filter('woocommerce_email_get_option', [$this, 'translate_subject_heading_option'], 10, 5);
 
         // Strategy B: replace the baked-in greeting/intro block. It lives in the
         // template between the header and order-details hooks, so we buffer that
@@ -135,7 +136,7 @@ class Advanced_Editor
 
     public function register_email_field_filters(): void
     {
-        if (!$this->feature_enabled() || !function_exists('WC')) {
+        if (!function_exists('WC')) {
             return;
         }
 
@@ -155,6 +156,12 @@ class Advanced_Editor
                 add_filter(
                     'woocommerce_settings_api_form_fields_' . $email_id,
                     function (array $fields) use ($email_id, $is_order, $has_order): array {
+                        $fields = $this->add_subject_heading_translation_hints($fields);
+
+                        if (!$this->feature_enabled()) {
+                            return $fields;
+                        }
+
                         return $this->inject_fields($fields, $email_id, $is_order, $has_order);
                     },
                     20
@@ -381,6 +388,34 @@ class Advanced_Editor
     }
 
     /**
+     * Add translation guidance to WooCommerce's native subject/heading fields.
+     *
+     * @param array<string, mixed> $fields
+     * @return array<string, mixed>
+     */
+    private function add_subject_heading_translation_hints(array $fields): array
+    {
+        $hint = __('Der eingegebene Text kann mit der Plugin-Übersetzung "LotzApp for WooCommerce" in Loco Translate übersetzt werden. WooCommerce-Platzhalter wie {order_number} bleiben erhalten.', 'lotzapp-for-woocommerce');
+
+        foreach ($fields as $key => $field) {
+            if (!is_string($key) || !$this->is_subject_heading_option_key($key) || !is_array($field)) {
+                continue;
+            }
+
+            $description = isset($field['description']) && is_string($field['description'])
+                ? trim($field['description'])
+                : '';
+
+            if ($description !== '' && strpos($description, $hint) !== false) {
+                continue;
+            }
+
+            $fields[$key]['description'] = $description !== '' ? $description . ' ' . $hint : $hint;
+        }
+
+        return $fields;
+    }
+    /**
      * @param array<string, mixed> $fields
      * @return array<string, mixed>
      */
@@ -405,6 +440,7 @@ class Advanced_Editor
             'type'    => 'checkbox',
             'label'   => __('LotzApp-Textersetzung für diese E-Mail aktivieren', 'lotzapp-for-woocommerce'),
             'default' => 'no',
+            'description' => __('Der eingegebene Text kann mit der Plugin-Übersetzung "LotzApp for WooCommerce" in Loco Translate übersetzt werden.', 'lotzapp-for-woocommerce'),
         ];
         if ($is_order_email) {
             $intro_default = $this->default_snapshot($email_id, 'intro');
@@ -601,6 +637,60 @@ class Advanced_Editor
     }
 
     /**
+     * Translate custom WooCommerce subject/heading option values before WC
+     * replaces placeholders like {order_number}.
+     *
+     * @param mixed $value
+     * @param mixed $email
+     * @param mixed $raw_value
+     * @param mixed $key
+     * @param mixed $empty_value
+     * @return mixed
+     */
+    public function translate_subject_heading_option($value, $email, $raw_value = null, $key = '', $empty_value = null)
+    {
+        if (!$email instanceof WC_Email || !is_string($key) || !$this->is_subject_heading_option_key($key) || $email->id === '') {
+            return $value;
+        }
+
+        if ($this->is_email_settings_screen()) {
+            return $value;
+        }
+
+        $settings = $this->email_settings($email->id);
+        if (!array_key_exists($key, $settings) || !is_string($settings[$key]) || trim($settings[$key]) === '') {
+            return $value;
+        }
+
+        return $this->translate_email_content($email, (string) $settings[$key]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function email_settings(string $email_id): array
+    {
+        $settings = get_option('woocommerce_' . $email_id . '_settings', []);
+        return is_array($settings) ? $settings : [];
+    }
+
+    private function is_subject_heading_option_key(string $key): bool
+    {
+        return preg_match('/^(subject|heading)(?:$|_)/', $key) === 1;
+    }
+
+    private function is_email_settings_screen(): bool
+    {
+        if (!is_admin()) {
+            return false;
+        }
+
+        $page = isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $tab  = isset($_GET['tab']) ? sanitize_text_field(wp_unslash($_GET['tab'])) : '';   // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+        return $page === 'wc-settings' && $tab === 'email';
+    }
+    /**
      * Per-email content translation via gettext. The text domain
      * "lotzapp-email-<id>" is loaded in the main plugin file (init +
      * change_locale) from wp-content/languages/plugins/lotzapp-email-<id>-<locale>.mo
@@ -613,9 +703,101 @@ class Advanced_Editor
         if ($text === '' || $email->id === '') {
             return $text;
         }
-        return (string) __($text, 'lotzapp-email-' . $email->id);
+        $translated = (string) __($text, 'lotzapp-email-' . $email->id);
+        if ($translated !== $text) {
+            return $translated;
+        }
+
+        $translated = (string) __($text, 'lotzapp-for-woocommerce');
+        if ($translated !== $text) {
+            return $translated;
+        }
+
+        return $this->translate_email_content_from_main_mo($text);
     }
 
+    private function translate_email_content_from_main_mo(string $text): string
+    {
+        if ($text === '') {
+            return $text;
+        }
+
+        $locales = [];
+        foreach ([get_locale(), determine_locale()] as $locale) {
+            if (is_string($locale) && $locale !== '' && !in_array($locale, $locales, true)) {
+                $locales[] = $locale;
+            }
+        }
+
+        foreach ($locales as $locale) {
+            $translated = $this->translation_from_main_mo_for_locale($text, $locale);
+            if ($translated !== $text) {
+                return $translated;
+            }
+        }
+
+        return $text;
+    }
+
+    private function translation_from_main_mo_for_locale(string $text, string $locale): string
+    {
+        static $catalogs = [];
+
+        if ($locale === '') {
+            return $text;
+        }
+
+        $domain = 'lotzapp-for-woocommerce';
+        $paths = [
+            trailingslashit(WP_LANG_DIR) . 'plugins/' . $domain . '-' . $locale . '.mo',
+            trailingslashit(LOTZWOO_PLUGIN_DIR) . 'languages/' . $domain . '-' . $locale . '.mo',
+        ];
+
+        foreach ($paths as $path) {
+            if (!is_string($path) || !file_exists($path)) {
+                continue;
+            }
+
+            if (!array_key_exists($path, $catalogs)) {
+                $catalogs[$path] = class_exists('\Lotzwoo\Translations\MO_Writer')
+                    ? \Lotzwoo\Translations\MO_Writer::read($path)
+                    : [];
+            }
+
+            foreach ($this->translation_lookup_keys($text) as $lookup_key) {
+                if (isset($catalogs[$path][$lookup_key]) && is_string($catalogs[$path][$lookup_key]) && $catalogs[$path][$lookup_key] !== '') {
+                    return $catalogs[$path][$lookup_key];
+                }
+            }
+        }
+
+        return $text;
+    }
+
+    /**
+     * @return string[]
+     */
+    private function translation_lookup_keys(string $text): array
+    {
+        $keys = [$text];
+
+        $normalized = str_replace(["\r\n", "\r"], "\n", $text);
+        if ($normalized !== $text) {
+            $keys[] = $normalized;
+        }
+
+        $decoded = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if ($decoded !== $text) {
+            $keys[] = $decoded;
+        }
+
+        $decoded_normalized = str_replace(["\r\n", "\r"], "\n", $decoded);
+        if ($decoded_normalized !== $decoded) {
+            $keys[] = $decoded_normalized;
+        }
+
+        return array_values(array_unique($keys));
+    }
     private function email_active(WC_Email $email): bool
     {
         return $this->feature_enabled()

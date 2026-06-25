@@ -1789,7 +1789,7 @@ foreach ($price_display_groups as $slug => $group) {
     public function render(): void
     {
         $tab  = isset($_GET['tab']) ? sanitize_key((string) $_GET['tab']) : 'general';
-        $tab  = in_array($tab, ['general', 'ca-prices', 'product-images', 'menu-planning', 'delivery-times', 'deposit', 'emails'], true) ? $tab : 'general';
+        $tab  = in_array($tab, ['general', 'ca-prices', 'product-images', 'menu-planning', 'delivery-times', 'deposit', 'emails', 'translatepress'], true) ? $tab : 'general';
         $tabs = [
             'general'   => __('Allgemein', 'lotzapp-for-woocommerce'),
             'ca-prices' => __('Preise', 'lotzapp-for-woocommerce'),
@@ -1798,6 +1798,7 @@ foreach ($price_display_groups as $slug => $group) {
             'delivery-times' => __('Lieferzeit', 'lotzapp-for-woocommerce'),
             'deposit' => __('Pfand', 'lotzapp-for-woocommerce'),
             'emails'    => __('Emails', 'lotzapp-for-woocommerce'),
+            'translatepress' => __('TranslatePress', 'lotzapp-for-woocommerce'),
         ];
         $base_url = menu_page_url('lotzwoo-settings', false);
         ?>
@@ -1813,6 +1814,12 @@ foreach ($price_display_groups as $slug => $group) {
                     <a href="<?php echo $url; ?>" class="nav-tab<?php echo $active; ?>"><?php echo esc_html($label); ?></a>
                 <?php endforeach; ?>
             </h2>
+
+            <?php if ($tab === 'translatepress') : ?>
+                <?php (new Translations_Page())->render_tab(); ?>
+        </div>
+                <?php return; ?>
+            <?php endif; ?>
 
             <form action="options.php" method="post">
                 <?php

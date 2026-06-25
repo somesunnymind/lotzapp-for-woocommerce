@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       LotzApp for WooCommerce
  * Description:       Erweitert WooCommerce-Shops um Ca.-Preislogik, Admin-Tools zur Datenpflege, automatisierte Menüaktualisierung und mehr.
- * Version:           0.1.14.2
+ * Version:           0.1.15
  * Author:            somesunnymind.com
  * Requires at least: 5.8
  * Requires PHP:      8.1
@@ -51,12 +51,36 @@ add_action('before_woocommerce_init', static function () {
 });
 
 // Load translations. WP 6.7+ requires this on `init` (or later), not earlier.
+if (!function_exists('lotzwoo_load_main_textdomain')) {
+    function lotzwoo_load_main_textdomain(?string $locale = null): void
+    {
+        $domain = 'lotzapp-for-woocommerce';
+        $locale = $locale !== null && $locale !== '' ? $locale : get_locale();
+
+        load_plugin_textdomain(
+            $domain,
+            false,
+            dirname(plugin_basename(LOTZWOO_PLUGIN_FILE)) . '/languages'
+        );
+
+        $candidates = [
+            trailingslashit(WP_LANG_DIR) . 'plugins/' . $domain . '-' . $locale . '.mo',
+            trailingslashit(LOTZWOO_PLUGIN_DIR) . 'languages/' . $domain . '-' . $locale . '.mo',
+        ];
+
+        foreach ($candidates as $mo) {
+            if (!is_string($mo) || !file_exists($mo)) {
+                continue;
+            }
+
+            unload_textdomain($domain);
+            load_textdomain($domain, $mo);
+            return;
+        }
+    }
+}
 add_action('init', static function () {
-    load_plugin_textdomain(
-        'lotzapp-for-woocommerce',
-        false,
-        dirname(plugin_basename(LOTZWOO_PLUGIN_FILE)) . '/languages'
-    );
+    lotzwoo_load_main_textdomain();
 });
 
 /**
@@ -138,6 +162,7 @@ add_action('init', static function () {
     lotzwoo_load_email_textdomains();
 }, 5);
 add_action('change_locale', static function ($new_locale) {
+    lotzwoo_load_main_textdomain((string) $new_locale);
     lotzwoo_load_email_textdomains((string) $new_locale);
 });
 add_action('admin_init', 'lotzwoo_register_email_textdomains_for_loco');

@@ -36,6 +36,7 @@ class Email_Content_Extractor
     {
         $settings = (array) get_option('woocommerce_' . $email_id . '_settings', []);
         $entries  = [];
+
         foreach (self::FIELDS as $field => $label) {
             $value = $settings['lotzwoo_adv_' . $field] ?? '';
             if (!is_string($value)) continue;
@@ -48,7 +49,36 @@ class Email_Content_Extractor
                 'refs'         => ['WooCommerce email ' . $email_id . ': lotzwoo_adv_' . $field . ' (' . $label . ')'],
             ];
         }
+
+        foreach ($settings as $field => $value) {
+            if (!is_string($field) || !$this->is_subject_heading_option_key($field)) continue;
+            if (!is_string($value)) continue;
+            $value = trim($value);
+            if ($value === '') continue;
+
+            $entries[$field] = [
+                'msgid'        => $value,
+                'msgid_plural' => null,
+                'msgctxt'      => null,
+                'refs'         => ['WooCommerce email ' . $email_id . ': ' . $field . ' (' . $this->subject_heading_label($field) . ')'],
+            ];
+        }
+
         return $entries;
+    }
+
+    private function is_subject_heading_option_key(string $key): bool
+    {
+        return preg_match('/^(subject|heading)(?:$|_)/', $key) === 1;
+    }
+
+    private function subject_heading_label(string $key): string
+    {
+        if (strpos($key, 'subject') === 0) {
+            return 'Betreff';
+        }
+
+        return 'E-Mail-Überschrift';
     }
 
     /**
